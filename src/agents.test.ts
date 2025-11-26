@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as pty from "node-pty";
-import { DEFAULT_AGENTS, DEFAULT_CHAIRMAN } from "./agents.js";
+import { DEFAULT_AGENTS, DEFAULT_CHAIRMAN, commandExists, filterAvailableAgents } from "./agents.js";
 
 // Helper to wait for output containing specific text
 function waitForOutput(
@@ -47,6 +47,60 @@ const KEYS = {
   TWO: "2",
   THREE: "3",
 };
+
+describe("commandExists", () => {
+  it("should return true for existing commands", () => {
+    expect(commandExists("node")).toBe(true);
+    expect(commandExists("npm")).toBe(true);
+  });
+
+  it("should return false for non-existing commands", () => {
+    expect(commandExists("nonexistent-command-xyz-123")).toBe(false);
+    expect(commandExists("fake-cli-tool")).toBe(false);
+  });
+});
+
+describe("filterAvailableAgents", () => {
+  it("should separate available and unavailable agents", () => {
+    const testAgents = [
+      { name: "node-agent", command: ["node", "--version"], promptViaStdin: true },
+      { name: "fake-agent", command: ["nonexistent-cmd-xyz"], promptViaStdin: true },
+    ];
+
+    const { available, unavailable } = filterAvailableAgents(testAgents);
+
+    expect(available).toHaveLength(1);
+    expect(available[0].name).toBe("node-agent");
+
+    expect(unavailable).toHaveLength(1);
+    expect(unavailable[0].name).toBe("fake-agent");
+    expect(unavailable[0].command).toBe("nonexistent-cmd-xyz");
+  });
+
+  it("should return all agents as available when all commands exist", () => {
+    const testAgents = [
+      { name: "agent1", command: ["node"], promptViaStdin: true },
+      { name: "agent2", command: ["npm"], promptViaStdin: true },
+    ];
+
+    const { available, unavailable } = filterAvailableAgents(testAgents);
+
+    expect(available).toHaveLength(2);
+    expect(unavailable).toHaveLength(0);
+  });
+
+  it("should return all agents as unavailable when no commands exist", () => {
+    const testAgents = [
+      { name: "fake1", command: ["nonexistent-1"], promptViaStdin: true },
+      { name: "fake2", command: ["nonexistent-2"], promptViaStdin: true },
+    ];
+
+    const { available, unavailable } = filterAvailableAgents(testAgents);
+
+    expect(available).toHaveLength(0);
+    expect(unavailable).toHaveLength(2);
+  });
+});
 
 describe("DEFAULT_AGENTS configuration", () => {
   it("should have 3 default agents", () => {

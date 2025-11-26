@@ -1,7 +1,37 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import readline from "node:readline";
 import chalk from "chalk";
 import type { AgentConfig, AgentState, AgentStatus } from "./types.js";
+
+/**
+ * Check if a command exists in PATH
+ */
+export function commandExists(cmd: string): boolean {
+  const result = spawnSync("which", [cmd], { stdio: "pipe" });
+  return result.status === 0;
+}
+
+/**
+ * Filter agents to only include those with available commands
+ */
+export function filterAvailableAgents(agents: AgentConfig[]): {
+  available: AgentConfig[];
+  unavailable: Array<{ name: string; command: string }>;
+} {
+  const available: AgentConfig[] = [];
+  const unavailable: Array<{ name: string; command: string }> = [];
+
+  for (const agent of agents) {
+    const cmd = agent.command[0];
+    if (commandExists(cmd)) {
+      available.push(agent);
+    } else {
+      unavailable.push({ name: agent.name, command: cmd });
+    }
+  }
+
+  return { available, unavailable };
+}
 
 export const DEFAULT_AGENTS: AgentConfig[] = [
   // Codex: non-interactive exec mode, "-" reads prompt from stdin.

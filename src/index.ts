@@ -1,6 +1,7 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { DEFAULT_AGENTS, runAgentsInteractive } from "./agents.js";
+import chalk from "chalk";
+import { DEFAULT_AGENTS, filterAvailableAgents, runAgentsInteractive } from "./agents.js";
 import { buildRankingPrompt } from "./prompts.js";
 import {
   abortIfNoStage1,
@@ -44,7 +45,27 @@ async function main() {
   const question = argv._[0]?.toString() || (argv as any).question;
   const timeoutMs = argv.timeout && argv.timeout > 0 ? argv.timeout * 1000 : undefined;
 
-  const agents = DEFAULT_AGENTS;
+  // Filter agents based on command availability
+  const { available, unavailable } = filterAvailableAgents(DEFAULT_AGENTS);
+
+  if (unavailable.length > 0) {
+    console.log(chalk.yellow("Skipping unavailable agents:"));
+    for (const { name, command } of unavailable) {
+      console.log(chalk.gray(`  - ${name} (command '${command}' not found)`));
+    }
+    console.log();
+  }
+
+  if (available.length === 0) {
+    console.error(chalk.red("Error: No agents available. Please install at least one of: codex, claude, gemini"));
+    process.exit(1);
+  }
+
+  if (available.length < 2) {
+    console.log(chalk.yellow(`Warning: Only ${available.length} agent available. Council works best with multiple agents.\n`));
+  }
+
+  const agents = available;
   const chairman = pickChairman(agents, argv.chairman);
   const useTty = Boolean(process.stdin.isTTY && process.stdout.isTTY);
 
