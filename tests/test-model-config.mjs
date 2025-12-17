@@ -296,13 +296,13 @@ await runTest('3.3 createAgentConfig creates valid agent for claude:heavy', asyn
 await runTest('3.4 createAgentConfig creates valid agent for gemini:fast', async () => {
   const agent = createAgentConfig('gemini', 'fast');
   assertEqual(agent.name, 'gemini:fast', 'Name should be gemini:fast');
-  assertIncludes(agent.command, 'gemini-2.5-flash', 'Command should include gemini-2.5-flash model');
+  assertIncludes(agent.command, 'gemini-2.5-flash-lite', 'Command should include gemini-2.5-flash-lite model');
 });
 
 await runTest('3.5 createAgentConfig creates valid agent for gemini:default', async () => {
   const agent = createAgentConfig('gemini', 'default');
   assertEqual(agent.name, 'gemini:default', 'Name should be gemini:default');
-  assertIncludes(agent.command, 'gemini-2.5-pro', 'Command should include gemini-2.5-pro model');
+  assertIncludes(agent.command, 'gemini-2.5-flash', 'Command should include gemini-2.5-flash model');
 });
 
 await runTest('3.6 createAgentConfig creates valid agent for gemini:heavy', async () => {
@@ -776,8 +776,8 @@ await runTest('10.1 Claude model IDs are correct', async () => {
 
 await runTest('10.2 Gemini model IDs use full model names', async () => {
   const config = loadModelsConfig();
-  assertEqual(config.providers.gemini.tiers.fast.model, 'gemini-2.5-flash', 'Gemini fast should be gemini-2.5-flash');
-  assertEqual(config.providers.gemini.tiers.default.model, 'gemini-2.5-pro', 'Gemini default should be gemini-2.5-pro');
+  assertEqual(config.providers.gemini.tiers.fast.model, 'gemini-2.5-flash-lite', 'Gemini fast should be gemini-2.5-flash-lite');
+  assertEqual(config.providers.gemini.tiers.default.model, 'gemini-2.5-flash', 'Gemini default should be gemini-2.5-flash');
   assertEqual(config.providers.gemini.tiers.heavy.model, 'gemini-2.5-pro', 'Gemini heavy should be gemini-2.5-pro');
 });
 
@@ -793,9 +793,9 @@ await runTest('10.4 Gemini fast is flash variant', async () => {
   assert(config.providers.gemini.tiers.fast.model.includes('flash'), 'Gemini fast should be flash variant');
 });
 
-await runTest('10.5 Gemini default is pro variant', async () => {
+await runTest('10.5 Gemini default is flash variant', async () => {
   const config = loadModelsConfig();
-  assert(config.providers.gemini.tiers.default.model.includes('pro'), 'Gemini default should be pro variant');
+  assert(config.providers.gemini.tiers.default.model.includes('flash'), 'Gemini default should be flash variant');
 });
 
 await runTest('10.6 Gemini heavy is pro variant', async () => {
