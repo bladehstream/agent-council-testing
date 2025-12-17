@@ -417,21 +417,19 @@ const result = await runCouncilPipeline(
 
 ```bash
 # Unit tests (no agents required)
-node test-runner.mjs
-
-# Model configuration tests (no agents required)
-node test-model-config.mjs
+npm test
+# or: node tests/test-runner.mjs && node tests/test-model-config.mjs
 
 # Integration tests (requires 2+ agents)
-node test-pipeline.mjs
+npm run test:pipeline
 
-# Run all tests
-node test-runner.mjs && node test-model-config.mjs && node test-pipeline.mjs
+# Run all tests including pipeline
+npm run test:all
 ```
 
 **Test Coverage:**
 - Unit tests: 31 tests (build, exports, types, utilities)
-- Model config tests: 88 tests (models.json, presets, agent creation)
+- Model config tests: 101 tests (models.json, presets, agent creation, stage spec parsing)
 - Pipeline tests: 7 tests (full 3-stage execution with real agents)
 
 See [TEST_RECORD.md](./TEST_RECORD.md) for detailed test documentation.
@@ -502,9 +500,11 @@ agent-council/
 │   ├── repl.ts         # Interactive REPL mode
 │   └── index.ts        # CLI entry point
 ├── dist/               # Compiled JavaScript + declarations
+├── tests/              # Test suites
+│   ├── test-runner.mjs       # Unit tests (31)
+│   ├── test-model-config.mjs # Model config tests (101)
+│   └── test-pipeline.mjs     # Integration tests (7)
 ├── models.json         # Model definitions and presets
-├── test-runner.mjs     # Unit test suite
-├── test-pipeline.mjs   # Integration test suite
 ├── QUICKSTART.md       # Setup and usage guide
 ├── TEST_RECORD.md      # Test documentation
 └── package.json

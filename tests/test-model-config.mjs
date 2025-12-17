@@ -64,7 +64,7 @@ function assertType(value, type, message) {
 // ============================================================================
 let lib;
 try {
-  lib = await import('./dist/lib.js');
+  lib = await import('../dist/lib.js');
 } catch (e) {
   console.error('Failed to import lib.js. Run `npm run build` first.');
   console.error(e.message);

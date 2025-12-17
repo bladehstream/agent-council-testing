@@ -301,12 +301,9 @@ The core functionality is verified by the passing tests:
 
 | File | Purpose | Run Command |
 |------|---------|-------------|
-| `test-runner.mjs` | Unit tests (no agents required) | `node test-runner.mjs` |
-| `test-model-config.mjs` | Model config tests (no agents required) | `node test-model-config.mjs` |
-| `test-pipeline.mjs` | Integration tests (2+ agents required) | `node test-pipeline.mjs` |
-| `test-results.json` | Unit test results (JSON) | Auto-generated |
-| `test-model-config-results.json` | Model config test results (JSON) | Auto-generated |
-| `test-pipeline-results.json` | Pipeline test results (JSON) | Auto-generated |
+| `tests/test-runner.mjs` | Unit tests (no agents required) | `node tests/test-runner.mjs` |
+| `tests/test-model-config.mjs` | Model config tests (no agents required) | `node tests/test-model-config.mjs` |
+| `tests/test-pipeline.mjs` | Integration tests (2+ agents required) | `node tests/test-pipeline.mjs` |
 
 ---
 
@@ -316,15 +313,22 @@ The core functionality is verified by the passing tests:
 ```bash
 cd agent-council-testing
 npm run build
-node test-runner.mjs
+node tests/test-runner.mjs
 ```
 
 Expected: `SUMMARY: 31 passed, 0 failed, 0 skipped`
 
+### Model Config Tests
+```bash
+node tests/test-model-config.mjs
+```
+
+Expected: `MODEL CONFIG TESTS: 101 passed, 0 failed, 0 skipped`
+
 ### Pipeline Tests
 ```bash
 # Ensure at least 2 agents are authenticated
-node test-pipeline.mjs
+node tests/test-pipeline.mjs
 ```
 
 Note: Pipeline tests take 60-90 seconds per test due to real AI agent calls.

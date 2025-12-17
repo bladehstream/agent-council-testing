@@ -64,24 +64,23 @@ import('./dist/lib.js').then(lib => {
 
 ### Unit Tests (no agents required)
 ```bash
-node test-runner.mjs
+npm test
+# or: node tests/test-runner.mjs && node tests/test-model-config.mjs
 ```
 
-Expected output: `SUMMARY: 31 passed, 0 failed, 0 skipped`
-
-### Model Configuration Tests (no agents required)
-```bash
-node test-model-config.mjs
-```
-
-Expected output: `MODEL CONFIG TESTS: 88 passed, 0 failed, 0 skipped`
+Expected output: `SUMMARY: 31 passed, 0 failed, 0 skipped` followed by `MODEL CONFIG TESTS: 101 passed, 0 failed, 0 skipped`
 
 ### Pipeline Tests (requires 2+ agents)
 ```bash
-node test-pipeline.mjs
+npm run test:pipeline
 ```
 
 Note: Pipeline tests take 60-90 seconds each due to real AI agent calls.
+
+### All Tests
+```bash
+npm run test:all
+```
 
 ## Usage Examples
 
@@ -430,10 +429,11 @@ agent-council/
 │   ├── repl.ts         # Interactive mode
 │   └── index.ts        # CLI entry point
 ├── dist/               # Compiled output
+├── tests/              # Test suites
+│   ├── test-runner.mjs       # Unit tests (31)
+│   ├── test-model-config.mjs # Model config tests (101)
+│   └── test-pipeline.mjs     # Integration tests (7)
 ├── models.json         # Model definitions and presets
-├── test-runner.mjs     # Unit tests (31 tests)
-├── test-model-config.mjs # Model config tests (88 tests)
-├── test-pipeline.mjs   # Integration tests (7 tests)
 ├── package.json
 └── tsconfig.json
 ```

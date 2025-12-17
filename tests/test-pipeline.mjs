@@ -12,7 +12,7 @@ import {
   pickChairman,
   buildQuestionWithHistory,
   DEFAULT_AGENTS,
-} from './dist/lib.js';
+} from '../dist/lib.js';
 import fs from 'fs';
 
 const results = [];

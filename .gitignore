@@ -26,6 +26,10 @@ npm-debug.log*
 # Test coverage
 coverage/
 
+# Test results (auto-generated)
+test-results.json
+test-*-results.json
+
 # Temporary files
 *.tmp
 *.temp

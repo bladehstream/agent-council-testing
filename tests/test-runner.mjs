@@ -48,7 +48,7 @@ function assert(condition, message) {
 }
 
 // Import the library
-const lib = await import('./dist/lib.js');
+const lib = await import('../dist/lib.js');
 
 // ============================================================================
 // Category 1: Build & Package Structure
@@ -362,13 +362,13 @@ await runTest(test('7.3 runCouncilPipeline with 0 agents returns null', async ()
 log('\n=== Category 8: Import Safety ===');
 
 await runTest(test('8.1 Import lib.js succeeds', async () => {
-  const lib2 = await import('./dist/lib.js');
+  const lib2 = await import('../dist/lib.js');
   assert(lib2.runCouncilPipeline, 'Should have runCouncilPipeline');
 }));
 
 await runTest(test('8.2 Import index.js does not auto-execute', async () => {
   // This would hang if main() auto-executed
-  const idx = await import('./dist/index.js');
+  const idx = await import('../dist/index.js');
   assert(true, 'Import completed without hanging');
 }));
 
