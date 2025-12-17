@@ -4,6 +4,7 @@ import { callAgent, DEFAULT_CHAIRMAN, runAgentsInteractive } from "./agents.js";
 import type {
   AgentConfig,
   AgentState,
+  EnhancedPipelineConfig,
   LabelMap,
   Stage1Result,
   Stage2Result,
@@ -30,6 +31,10 @@ export interface PipelineOptions {
   tty: boolean;
   silent?: boolean;
   callbacks?: PipelineCallbacks;
+}
+
+export interface EnhancedPipelineOptions extends PipelineOptions {
+  config: EnhancedPipelineConfig;
 }
 
 export async function runCouncilPipeline(
@@ -200,4 +205,74 @@ export function abortIfNoStage1(stage1: Stage1Result[]) {
     return true;
   }
   return false;
+}
+
+/**
+ * Enhanced pipeline with per-stage agent configuration.
+ * Allows different agents/models for each stage of the council.
+ */
+export async function runEnhancedPipeline(
+  question: string,
+  options: EnhancedPipelineOptions
+): Promise<PipelineResult | null> {
+  const { config, timeoutMs, tty, silent = false, callbacks } = options;
+
+  // Stage 1: Individual Responses (using stage1 agents)
+  const stage1States = await runAgentsInteractive(
+    "Stage 1 - Individual Responses",
+    question,
+    config.stage1.agents,
+    timeoutMs,
+    { tty }
+  );
+  const stage1 = extractStage1(stage1States);
+
+  if (stage1.length === 0) {
+    if (!silent) {
+      console.log(chalk.red("No agent responses were completed; aborting."));
+    }
+    return null;
+  }
+
+  // Stage 1 callback
+  await callbacks?.onStage1Complete?.(stage1);
+
+  // Build label map for Stage 2
+  const labels = stage1.map((_, idx) => `Response ${String.fromCharCode(65 + idx)}`);
+  const labelToAgent: LabelMap = {};
+  labels.forEach((label, idx) => {
+    labelToAgent[label] = stage1[idx].agent;
+  });
+
+  // Stage 2: Peer Rankings (using stage2 agents - may differ from stage1)
+  const rankingPrompt = buildRankingPrompt(question, stage1);
+  const stage2States = await runAgentsInteractive(
+    "Stage 2 - Peer Rankings",
+    rankingPrompt,
+    config.stage2.agents,
+    timeoutMs,
+    { tty }
+  );
+  const stage2 = extractStage2(stage2States);
+
+  // Calculate aggregate rankings
+  const aggregate = calculateAggregateRankings(stage2, labelToAgent);
+
+  // Stage 2 callback
+  await callbacks?.onStage2Complete?.(stage2, aggregate);
+
+  // Stage 3: Chairman Synthesis (using stage3 chairman config)
+  const stage3 = await runChairman(
+    question,
+    stage1,
+    stage2,
+    config.stage3.chairman,
+    timeoutMs,
+    silent
+  );
+
+  // Stage 3 callback
+  await callbacks?.onStage3Complete?.(stage3);
+
+  return { stage1, stage2, stage3, aggregate };
 }

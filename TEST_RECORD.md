@@ -1,7 +1,6 @@
 # Test Run Record
 
 **Date:** 2025-12-17
-**Commit:** 13f511b (feat: add programmatic API exports)
 **Environment:** Linux 6.14.0-1017-oem, Node.js v20.19.6
 
 ---
@@ -11,8 +10,9 @@
 | Suite | Passed | Failed | Skipped | Total |
 |-------|--------|--------|---------|-------|
 | Unit Tests | 31 | 0 | 0 | 31 |
+| Model Config Tests | 88 | 0 | 0 | 88 |
 | Pipeline Tests | 4 | 3* | 0 | 7 |
-| **Total** | **35** | **3** | **0** | **38** |
+| **Total** | **123** | **3** | **0** | **126** |
 
 *Pipeline failures were test timeouts (120s limit), not functionality issues.
 
@@ -105,6 +105,153 @@ Chairman: gemini
 
 ---
 
+## Model Configuration Tests (test-model-config.mjs)
+
+### Category 1: Models.json Structure
+
+| Test | Status |
+|------|--------|
+| 1.1 models.json file exists | PASS |
+| 1.2 models.json is valid JSON | PASS |
+| 1.3 models.json has required top-level fields | PASS |
+| 1.4 models.json has all three providers | PASS |
+| 1.5 each provider has required fields | PASS |
+| 1.6 each provider has all three tiers | PASS |
+| 1.7 each tier has required fields | PASS |
+| 1.8 only heavy tier has reasoning config | PASS |
+| 1.9 presets have required structure | PASS |
+| 1.10 defaults have required fields | PASS |
+
+### Category 2: Config Loading Functions
+
+| Test | Status |
+|------|--------|
+| 2.1 loadModelsConfig returns valid config | PASS |
+| 2.2 loadModelsConfig caches results | PASS |
+| 2.3 loadModelsConfig forceReload bypasses cache | PASS |
+| 2.4 getConfigPath returns valid path | PASS |
+| 2.5 listProviders returns all providers | PASS |
+| 2.6 listTiers returns all tiers | PASS |
+| 2.7 getProviderInfo returns provider config | PASS |
+| 2.8 getProviderInfo returns undefined for invalid provider | PASS |
+
+### Category 3: Agent Config Creation
+
+| Test | Status |
+|------|--------|
+| 3.1 createAgentConfig creates valid agent for claude:fast | PASS |
+| 3.2 createAgentConfig creates valid agent for claude:default | PASS |
+| 3.3 createAgentConfig creates valid agent for claude:heavy | PASS |
+| 3.4 createAgentConfig creates valid agent for gemini:fast | PASS |
+| 3.5 createAgentConfig creates valid agent for gemini:default | PASS |
+| 3.6 createAgentConfig creates valid agent for gemini:heavy | PASS |
+| 3.7 createAgentConfig creates valid agent for codex:fast | PASS |
+| 3.8 createAgentConfig creates valid agent for codex:default | PASS |
+| 3.9 createAgentConfig creates valid agent for codex:heavy | PASS |
+| 3.10 createAgentConfig throws for invalid provider | PASS |
+| 3.11 createAgentConfig throws for invalid tier | PASS |
+| 3.12 createAgentConfig includes promptViaStdin | PASS |
+| 3.13 agent command starts with correct CLI | PASS |
+
+### Category 4: Agent Spec Parsing
+
+| Test | Status |
+|------|--------|
+| 4.1 createAgentFromSpec parses claude:fast | PASS |
+| 4.2 createAgentFromSpec parses claude:default | PASS |
+| 4.3 createAgentFromSpec parses claude:heavy | PASS |
+| 4.4 createAgentFromSpec defaults to default tier | PASS |
+| 4.5 createAgentFromSpec works for all providers | PASS |
+| 4.6 createAgentFromSpec throws for invalid tier | PASS |
+| 4.7 parseAgentSpec returns provider and tier | PASS |
+| 4.8 parseAgentSpec defaults tier to default | PASS |
+
+### Category 5: Preset Functions
+
+| Test | Status |
+|------|--------|
+| 5.1 listPresets returns all presets | PASS |
+| 5.2 getPreset returns fast preset | PASS |
+| 5.3 getPreset returns balanced preset | PASS |
+| 5.4 getPreset returns thorough preset | PASS |
+| 5.5 getPreset throws for invalid preset | PASS |
+| 5.6 fast preset has correct agent counts | PASS |
+| 5.7 thorough preset has more stage2 agents | PASS |
+
+### Category 6: Pipeline Config Building
+
+| Test | Status |
+|------|--------|
+| 6.1 buildPipelineConfig creates valid config | PASS |
+| 6.2 buildPipelineConfig creates correct number of stage1 agents | PASS |
+| 6.3 buildPipelineConfig creates correct number of stage2 agents | PASS |
+| 6.4 buildPipelineConfig creates chairman | PASS |
+| 6.5 buildPipelineConfig distributes agents across providers | PASS |
+| 6.6 buildPipelineConfig works with single provider | PASS |
+| 6.7 buildPipelineConfig works with two providers | PASS |
+| 6.8 buildPipelineConfig applies correct tier to agents | PASS |
+| 6.9 thorough preset creates 6 stage2 agents | PASS |
+| 6.10 buildPipelineConfig sets useReasoning from preset | PASS |
+
+### Category 7: Model Command Structure
+
+| Test | Status |
+|------|--------|
+| 7.1 claude command includes --print flag | PASS |
+| 7.2 claude command includes --output-format text | PASS |
+| 7.3 gemini command includes --output-format text | PASS |
+| 7.4 codex command includes exec mode | PASS |
+| 7.5 codex command includes --skip-git-repo-check | PASS |
+| 7.6 all agents include --model flag | PASS |
+| 7.7 fast tier agents do NOT include reasoning flags | PASS |
+| 7.8 default tier agents do NOT include reasoning flags | PASS |
+| 7.9 claude:heavy includes --extended-thinking | PASS |
+| 7.10 codex:heavy includes --reasoning-effort xhigh | PASS |
+
+### Category 8: Enhanced Pipeline Options
+
+| Test | Status |
+|------|--------|
+| 8.1 runEnhancedPipeline is exported | PASS |
+| 8.2 EnhancedPipelineConfig structure is valid | PASS |
+| 8.3 stage1 agents are AgentConfig objects | PASS |
+| 8.4 stage2 agents are AgentConfig objects | PASS |
+| 8.5 chairman is AgentConfig object | PASS |
+
+### Category 9: Edge Cases and Error Handling
+
+| Test | Status |
+|------|--------|
+| 9.1 empty provider list throws | PASS |
+| 9.2 invalid provider in createAgentConfig throws | PASS |
+| 9.3 case sensitivity in tier names | PASS |
+| 9.4 whitespace handling in spec parsing | PASS |
+| 9.5 colon-only spec defaults tier | PASS |
+| 9.6 preset stage counts are positive integers | PASS |
+
+### Category 10: Model IDs Verification
+
+| Test | Status |
+|------|--------|
+| 10.1 Claude model IDs are correct | PASS |
+| 10.2 Gemini model IDs use 3.0 | PASS |
+| 10.3 Codex model IDs use 5.2 | PASS |
+| 10.4 Gemini fast is flash variant | PASS |
+| 10.5 Gemini default is pro variant | PASS |
+| 10.6 Gemini heavy is deep-think variant | PASS |
+| 10.7 Codex fast is mini variant | PASS |
+| 10.8 Codex heavy is max variant | PASS |
+
+### Category 11: CLI Availability Detection
+
+| Test | Status |
+|------|--------|
+| 11.1 commandExists returns boolean | PASS |
+| 11.2 commandExists finds node | PASS |
+| 11.3 commandExists returns false for nonexistent | PASS |
+
+---
+
 ## Pipeline Integration Tests (test-pipeline.mjs)
 
 | Test | Status | Duration | Notes |
@@ -137,8 +284,10 @@ The core functionality is verified by the passing tests:
 | File | Purpose | Run Command |
 |------|---------|-------------|
 | `test-runner.mjs` | Unit tests (no agents required) | `node test-runner.mjs` |
+| `test-model-config.mjs` | Model config tests (no agents required) | `node test-model-config.mjs` |
 | `test-pipeline.mjs` | Integration tests (2+ agents required) | `node test-pipeline.mjs` |
 | `test-results.json` | Unit test results (JSON) | Auto-generated |
+| `test-model-config-results.json` | Model config test results (JSON) | Auto-generated |
 | `test-pipeline-results.json` | Pipeline test results (JSON) | Auto-generated |
 
 ---
@@ -167,10 +316,21 @@ Note: Pipeline tests take 60-90 seconds per test due to real AI agent calls.
 ## Verified Functionality
 
 ### Core API
-- [x] All 16 exports available from lib.js
+- [x] All exports available from lib.js
 - [x] No undefined exports
 - [x] All function exports callable
 - [x] Constants have correct types
+
+### Model Configuration
+- [x] models.json validated (structure, fields, values)
+- [x] All 3 providers defined (claude, gemini, codex)
+- [x] All 3 tiers per provider (fast, default, heavy)
+- [x] Reasoning flags only on heavy tier
+- [x] Model IDs verified (Claude haiku/sonnet/opus, Gemini 3.0, Codex 5.2)
+- [x] Presets defined (fast, balanced, thorough)
+- [x] Config loading and caching works
+- [x] Agent creation from specs works
+- [x] Pipeline config building distributes agents correctly
 
 ### Pipeline Operations
 - [x] runCouncilPipeline executes full 3-stage flow
@@ -215,14 +375,18 @@ Note: Pipeline tests take 60-90 seconds per test due to real AI agent calls.
 
 | File | Changes |
 |------|---------|
-| `src/lib.ts` | NEW - Public API exports |
-| `src/pipeline.ts` | Added silent, callbacks, PipelineOptions |
+| `src/lib.ts` | Public API exports (updated with model config) |
+| `src/pipeline.ts` | Added silent, callbacks, PipelineOptions, runEnhancedPipeline |
+| `src/model-config.ts` | NEW - Model configuration and preset handling |
 | `src/agents.ts` | Added FilterResult export |
 | `src/prompts.ts` | Exported MAX_HISTORY_ENTRIES |
-| `src/index.ts` | Added main() guard |
+| `src/types.ts` | Added EnhancedPipelineConfig, ModelTier types |
+| `src/index.ts` | Added main() guard, model selection CLI flags |
+| `models.json` | NEW - Model definitions and presets |
 | `package.json` | Added exports field, types |
 | `tsconfig.json` | Added declaration options |
-| `README.md` | Added programmatic API docs |
+| `README.md` | Added programmatic API and model selection docs |
 | `QUICKSTART.md` | NEW - Setup and usage guide |
-| `test-runner.mjs` | NEW - Unit test suite |
-| `test-pipeline.mjs` | NEW - Integration test suite |
+| `test-runner.mjs` | NEW - Unit test suite (31 tests) |
+| `test-model-config.mjs` | NEW - Model config test suite (88 tests) |
+| `test-pipeline.mjs` | NEW - Integration test suite (7 tests) |

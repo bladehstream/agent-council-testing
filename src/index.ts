@@ -3,9 +3,20 @@ import { fileURLToPath } from "node:url";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import chalk from "chalk";
-import { DEFAULT_AGENTS, filterAvailableAgents } from "./agents.js";
-import { pickChairman, printFinal, runCouncilPipeline } from "./pipeline.js";
+import { DEFAULT_AGENTS, filterAvailableAgents, commandExists } from "./agents.js";
+import { pickChairman, printFinal, runCouncilPipeline, runEnhancedPipeline } from "./pipeline.js";
 import { startRepl } from "./repl.js";
+import {
+  loadModelsConfig,
+  refreshModelsConfig,
+  getConfigPath,
+  createAgentFromSpec,
+  getPreset,
+  listPresets,
+  listProviders,
+  buildPipelineConfig,
+  type ModelTier,
+} from "./model-config.js";
 
 function buildArgs() {
   return yargs(hideBin(process.argv))
@@ -17,7 +28,7 @@ function buildArgs() {
     })
     .option("chairman", {
       type: "string",
-      describe: "Which agent synthesizes the final answer",
+      describe: "Which agent synthesizes the final answer (e.g., 'claude:heavy')",
     })
     .option("timeout", {
       type: "number",
@@ -29,7 +40,82 @@ function buildArgs() {
       default: false,
       describe: "Output results as JSON",
     })
+    .option("preset", {
+      type: "string",
+      describe: "Use a preset configuration (fast, balanced, thorough)",
+    })
+    .option("stage1", {
+      type: "string",
+      describe: "Stage 1 agents (e.g., 'claude:fast,gemini:fast,codex:fast')",
+    })
+    .option("stage2", {
+      type: "string",
+      describe: "Stage 2 agents (e.g., 'claude:default,gemini:default')",
+    })
+    .option("refreshmodels", {
+      type: "boolean",
+      default: false,
+      describe: "Refresh models.json from package defaults",
+    })
+    .option("list-presets", {
+      type: "boolean",
+      default: false,
+      describe: "List available presets",
+    })
+    .option("list-models", {
+      type: "boolean",
+      default: false,
+      describe: "List available models and tiers",
+    })
+    .option("config-path", {
+      type: "boolean",
+      default: false,
+      describe: "Show path to models.json config",
+    })
     .help();
+}
+
+function printModelList() {
+  const config = loadModelsConfig();
+  console.log(chalk.bold("\nAvailable Models:\n"));
+
+  for (const [provider, providerConfig] of Object.entries(config.providers)) {
+    const cliAvailable = commandExists(providerConfig.cli);
+    const status = cliAvailable ? chalk.green("✓") : chalk.red("✗");
+    console.log(`${status} ${chalk.bold(provider)} (${providerConfig.cli})`);
+
+    for (const [tier, tierConfig] of Object.entries(providerConfig.tiers)) {
+      const reasoning = tierConfig.reasoning ? chalk.cyan(" +reasoning") : "";
+      console.log(`    ${tier}: ${tierConfig.model}${reasoning}`);
+      console.log(chalk.gray(`           ${tierConfig.description}`));
+    }
+    console.log();
+  }
+}
+
+function printPresetList() {
+  const config = loadModelsConfig();
+  console.log(chalk.bold("\nAvailable Presets:\n"));
+
+  for (const [name, preset] of Object.entries(config.presets)) {
+    console.log(`${chalk.bold(name)}: ${preset.description}`);
+    console.log(`    Stage 1: ${preset.stage1.count}x ${preset.stage1.tier}`);
+    console.log(`    Stage 2: ${preset.stage2.count}x ${preset.stage2.tier}`);
+    console.log(`    Stage 3: 1x ${preset.stage3.tier}${preset.stage3.reasoning ? " +reasoning" : ""}`);
+    console.log();
+  }
+}
+
+function getAvailableProviders(): string[] {
+  const config = loadModelsConfig();
+  return Object.keys(config.providers).filter((provider) => {
+    const cli = config.providers[provider].cli;
+    return commandExists(cli);
+  });
+}
+
+function parseAgentList(spec: string): ReturnType<typeof createAgentFromSpec>[] {
+  return spec.split(",").map((s) => createAgentFromSpec(s.trim()));
 }
 
 async function main() {
@@ -37,49 +123,143 @@ async function main() {
   const question = argv._[0]?.toString();
   const timeoutMs = argv.timeout && argv.timeout > 0 ? argv.timeout * 1000 : undefined;
 
-  // Filter agents based on command availability
-  const { available, unavailable } = filterAvailableAgents(DEFAULT_AGENTS);
-
-  if (unavailable.length > 0) {
-    console.log(chalk.yellow("Skipping unavailable agents:"));
-    for (const { name, command } of unavailable) {
-      console.log(chalk.gray(`  - ${name} (command '${command}' not found)`));
-    }
-    console.log();
+  // Handle utility commands
+  if (argv.refreshmodels) {
+    refreshModelsConfig();
+    return;
   }
 
-  if (available.length === 0) {
+  if (argv["config-path"]) {
+    console.log(getConfigPath());
+    return;
+  }
+
+  if (argv["list-models"]) {
+    printModelList();
+    return;
+  }
+
+  if (argv["list-presets"]) {
+    printPresetList();
+    return;
+  }
+
+  // Check for available providers
+  const availableProviders = getAvailableProviders();
+
+  if (availableProviders.length === 0) {
     console.error(chalk.red("Error: No agents available. Please install at least one of: codex, claude, gemini"));
     process.exit(1);
   }
 
-  if (available.length < 2) {
-    console.log(chalk.yellow(`Warning: Only ${available.length} agent available. Council works best with multiple agents.\n`));
+  if (availableProviders.length < 2) {
+    console.log(chalk.yellow(`Warning: Only ${availableProviders.length} provider available. Council works best with multiple agents.\n`));
   }
 
-  const chairman = pickChairman(available, argv.chairman);
   const useTty = Boolean(process.stdin.isTTY && process.stdout.isTTY);
 
-  // If no question provided, enter REPL mode
-  if (!question) {
-    await startRepl(available, chairman);
-    return;
-  }
+  // Determine if using enhanced mode (preset or stage flags)
+  const useEnhanced = argv.preset || argv.stage1 || argv.stage2;
 
-  // Single-run mode (backwards compatible)
-  const result = await runCouncilPipeline(question, available, chairman, {
-    timeoutMs,
-    tty: useTty,
-  });
+  if (useEnhanced) {
+    // Enhanced pipeline mode
+    const config = loadModelsConfig();
 
-  if (!result) {
-    process.exit(1);
-  }
+    let pipelineConfig;
 
-  if (argv.json) {
-    console.log(JSON.stringify(result, null, 2));
+    if (argv.preset) {
+      // Use preset configuration
+      const preset = getPreset(argv.preset, config);
+      pipelineConfig = buildPipelineConfig(preset, availableProviders, config);
+      console.log(chalk.cyan(`Using preset: ${argv.preset}\n`));
+    } else {
+      // Build config from stage flags
+      const stage1Agents = argv.stage1
+        ? parseAgentList(argv.stage1)
+        : availableProviders.map((p) => createAgentFromSpec(`${p}:default`));
+
+      const stage2Agents = argv.stage2
+        ? parseAgentList(argv.stage2)
+        : availableProviders.map((p) => createAgentFromSpec(`${p}:default`));
+
+      const chairmanSpec = argv.chairman || `${availableProviders[0]}:heavy`;
+      const chairman = createAgentFromSpec(chairmanSpec);
+
+      pipelineConfig = {
+        stage1: { agents: stage1Agents },
+        stage2: { agents: stage2Agents },
+        stage3: { chairman, useReasoning: false },
+      };
+    }
+
+    // Override chairman if specified
+    if (argv.chairman && argv.preset) {
+      pipelineConfig.stage3.chairman = createAgentFromSpec(argv.chairman);
+    }
+
+    // If no question provided, enter REPL mode (fall back to classic mode)
+    if (!question) {
+      const { available } = filterAvailableAgents(DEFAULT_AGENTS);
+      const chairman = pickChairman(available, argv.chairman);
+      await startRepl(available, chairman);
+      return;
+    }
+
+    const result = await runEnhancedPipeline(question, {
+      config: pipelineConfig,
+      timeoutMs,
+      tty: useTty,
+    });
+
+    if (!result) {
+      process.exit(1);
+    }
+
+    if (argv.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printFinal(result.stage1, result.stage2, result.aggregate, result.stage3);
+    }
   } else {
-    printFinal(result.stage1, result.stage2, result.aggregate, result.stage3);
+    // Classic mode (backwards compatible)
+    const { available, unavailable } = filterAvailableAgents(DEFAULT_AGENTS);
+
+    if (unavailable.length > 0) {
+      console.log(chalk.yellow("Skipping unavailable agents:"));
+      for (const { name, command } of unavailable) {
+        console.log(chalk.gray(`  - ${name} (command '${command}' not found)`));
+      }
+      console.log();
+    }
+
+    if (available.length === 0) {
+      console.error(chalk.red("Error: No agents available. Please install at least one of: codex, claude, gemini"));
+      process.exit(1);
+    }
+
+    const chairman = pickChairman(available, argv.chairman);
+
+    // If no question provided, enter REPL mode
+    if (!question) {
+      await startRepl(available, chairman);
+      return;
+    }
+
+    // Single-run mode (backwards compatible)
+    const result = await runCouncilPipeline(question, available, chairman, {
+      timeoutMs,
+      tty: useTty,
+    });
+
+    if (!result) {
+      process.exit(1);
+    }
+
+    if (argv.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printFinal(result.stage1, result.stage2, result.aggregate, result.stage3);
+    }
   }
 }
 

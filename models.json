@@ -1,0 +1,123 @@
+{
+  "$schema": "https://agent-council.dev/schemas/models.json",
+  "version": "1.0.0",
+  "updated": "2025-12-17",
+  "providers": {
+    "claude": {
+      "cli": "claude",
+      "flag": "--model",
+      "tiers": {
+        "fast": {
+          "model": "haiku",
+          "fullId": "claude-haiku-3-5-20241022",
+          "description": "Claude 3.5 Haiku - Fast, cost-effective responses"
+        },
+        "default": {
+          "model": "sonnet",
+          "fullId": "claude-sonnet-4-20250514",
+          "description": "Claude 4 Sonnet - Balanced performance"
+        },
+        "heavy": {
+          "model": "opus",
+          "fullId": "claude-opus-4-5-20251101",
+          "description": "Claude Opus 4.5 - Most capable reasoning with extended thinking",
+          "reasoning": {
+            "flag": "--extended-thinking",
+            "value": true
+          }
+        }
+      },
+      "reasoning": {
+        "supported": true,
+        "method": "extended-thinking",
+        "flag": "--extended-thinking",
+        "note": "Extended thinking only used on heavy tier"
+      }
+    },
+    "gemini": {
+      "cli": "gemini",
+      "flag": "--model",
+      "tiers": {
+        "fast": {
+          "model": "gemini-3.0-flash",
+          "fullId": "gemini-3.0-flash",
+          "description": "Gemini 3.0 Flash - Fast, efficient responses"
+        },
+        "default": {
+          "model": "gemini-3.0-pro",
+          "fullId": "gemini-3.0-pro",
+          "description": "Gemini 3.0 Pro - Advanced multimodal reasoning"
+        },
+        "heavy": {
+          "model": "gemini-3.0-deep-think",
+          "fullId": "gemini-3.0-deep-think",
+          "description": "Gemini 3.0 Deep Think - Enhanced reasoning mode"
+        }
+      },
+      "reasoning": {
+        "supported": true,
+        "method": "thinking-level",
+        "flag": "--thinking-level",
+        "values": ["low", "high"],
+        "note": "Controls internal reasoning depth"
+      }
+    },
+    "codex": {
+      "cli": "codex",
+      "flag": "--model",
+      "tiers": {
+        "fast": {
+          "model": "gpt-5.2-codex-mini",
+          "fullId": "gpt-5.2-codex-mini",
+          "description": "GPT-5.2 Codex Mini - Fast code generation"
+        },
+        "default": {
+          "model": "gpt-5.2-codex",
+          "fullId": "gpt-5.2-codex",
+          "description": "GPT-5.2 Codex - Balanced coding assistance"
+        },
+        "heavy": {
+          "model": "gpt-5.2-codex-max",
+          "fullId": "gpt-5.2-codex-max",
+          "description": "GPT-5.2 Codex Max - Maximum capability with extended reasoning",
+          "reasoning": {
+            "flag": "--reasoning-effort",
+            "value": "xhigh"
+          }
+        }
+      },
+      "reasoning": {
+        "supported": true,
+        "method": "reasoning-effort",
+        "flag": "--reasoning-effort",
+        "values": ["low", "medium", "high", "xhigh"],
+        "note": "xhigh only used on heavy tier for maximum reasoning depth"
+      }
+    }
+  },
+  "presets": {
+    "fast": {
+      "description": "Optimize for speed and cost",
+      "stage1": { "tier": "fast", "count": 3 },
+      "stage2": { "tier": "fast", "count": 3 },
+      "stage3": { "tier": "default", "count": 1 }
+    },
+    "balanced": {
+      "description": "Balance of speed and quality",
+      "stage1": { "tier": "default", "count": 3 },
+      "stage2": { "tier": "default", "count": 3 },
+      "stage3": { "tier": "heavy", "count": 1 }
+    },
+    "thorough": {
+      "description": "Maximum quality and reasoning depth",
+      "stage1": { "tier": "heavy", "count": 3 },
+      "stage2": { "tier": "heavy", "count": 6 },
+      "stage3": { "tier": "heavy", "count": 1, "reasoning": true }
+    }
+  },
+  "defaults": {
+    "preset": "balanced",
+    "chairman": "claude:heavy",
+    "fallbackTier": "default"
+  }
+}

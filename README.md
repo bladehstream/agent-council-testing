@@ -9,6 +9,9 @@ This fork adds a **programmatic API** for integration into larger automation wor
 - **Multi-Agent Consensus**: Combines responses from multiple AI models for more reliable answers
 - **Peer Validation**: Agents anonymously rank each other's responses to surface quality
 - **Chairman Synthesis**: A designated agent synthesizes the final answer from all inputs
+- **Granular Model Selection**: Choose model tiers (fast/default/heavy) per stage
+- **Presets**: Built-in configurations (fast, balanced, thorough) for common use cases
+- **Per-Stage Configuration**: Different agents and counts for each pipeline stage
 - **Programmatic API**: Full library exports for embedding in applications
 - **Stage Callbacks**: Hook into pipeline stages for progress tracking and checkpointing
 - **Silent Mode**: Suppress console output for clean programmatic usage
@@ -95,6 +98,39 @@ node -e "import('./dist/lib.js').then(({filterAvailableAgents, DEFAULT_AGENTS}) 
 ./dist/index.js
 ```
 
+### Model Selection
+
+Use presets or per-stage configuration to control which models run at each stage:
+
+```bash
+# Use a preset (fast, balanced, thorough)
+./dist/index.js "Question" --preset fast
+
+# Custom per-stage configuration
+./dist/index.js "Question" \
+  --stage1 "claude:fast,gemini:fast,codex:fast" \
+  --stage2 "claude:default,gemini:default" \
+  --chairman "claude:heavy"
+
+# List available models and tiers
+./dist/index.js --list-models
+
+# List available presets
+./dist/index.js --list-presets
+```
+
+**Model Tiers:**
+- `fast`: Optimized for speed (Claude Haiku, Gemini Flash, Codex Mini)
+- `default`: Balanced performance (Claude Sonnet, Gemini Pro, Codex)
+- `heavy`: Maximum capability with reasoning (Claude Opus, Gemini Deep Think, Codex Max)
+
+**Presets:**
+| Preset | Stage 1 | Stage 2 | Chairman | Use Case |
+|--------|---------|---------|----------|----------|
+| `fast` | 3x fast | 3x fast | default | Quick answers, cost-sensitive |
+| `balanced` | 3x default | 3x default | heavy | General purpose |
+| `thorough` | 3x heavy | 6x heavy | heavy +reasoning | Complex problems |
+
 ### Programmatic Usage
 
 ```typescript
@@ -130,11 +166,21 @@ if (result) {
 ```typescript
 // Pipeline
 runCouncilPipeline(question, agents, chairman, options)
+runEnhancedPipeline(question, options)  // Per-stage configuration
 pickChairman(agents, preferredName?)
 extractStage1(agentStates)
 extractStage2(agentStates)
 calculateAggregateRankings(stage2Results, labelMap)
 runChairman(query, stage1, stage2, chairman, timeoutMs, silent?)
+
+// Model Configuration
+loadModelsConfig()              // Load models.json
+refreshModelsConfig()           // Refresh from package defaults
+createAgentConfig(provider, tier)
+createAgentFromSpec(spec)       // e.g., "claude:heavy"
+getPreset(name)                 // Get preset configuration
+listPresets()                   // List available presets
+buildPipelineConfig(preset, providers)
 
 // Agents
 filterAvailableAgents(agents)  // Returns { available, unavailable }
@@ -154,6 +200,8 @@ MAX_HISTORY_ENTRIES
 AgentConfig, AgentState, AgentStatus
 Stage1Result, Stage2Result, Stage3Result
 PipelineResult, PipelineOptions, PipelineCallbacks
+EnhancedPipelineOptions, EnhancedPipelineConfig
+ModelsConfig, PresetConfig, ModelTier
 FilterResult, ConversationEntry, SessionState
 ```
 
@@ -217,6 +265,56 @@ const followUp = buildQuestionWithHistory("What about cost?", history);
 const result2 = await runCouncilPipeline(followUp, ...);
 ```
 
+### Enhanced Pipeline (Per-Stage Configuration)
+
+```typescript
+import {
+  runEnhancedPipeline,
+  createAgentFromSpec,
+  getPreset,
+  buildPipelineConfig,
+  loadModelsConfig,
+} from 'agent-council';
+
+// Option 1: Use a preset
+const config = loadModelsConfig();
+const preset = getPreset('balanced', config);
+const pipelineConfig = buildPipelineConfig(preset, ['claude', 'gemini', 'codex'], config);
+
+const result = await runEnhancedPipeline("Your question", {
+  config: pipelineConfig,
+  tty: false,
+  silent: true,
+});
+
+// Option 2: Custom configuration
+const customConfig = {
+  stage1: {
+    agents: [
+      createAgentFromSpec('claude:fast'),
+      createAgentFromSpec('gemini:fast'),
+      createAgentFromSpec('codex:fast'),
+    ],
+  },
+  stage2: {
+    agents: [
+      createAgentFromSpec('claude:default'),
+      createAgentFromSpec('gemini:default'),
+    ],
+  },
+  stage3: {
+    chairman: createAgentFromSpec('claude:heavy'),
+    useReasoning: true,
+  },
+};
+
+const result2 = await runEnhancedPipeline("Complex question", {
+  config: customConfig,
+  tty: false,
+  silent: true,
+});
+```
+
 ### Custom Agents
 
 ```typescript
@@ -247,9 +345,20 @@ const result = await runCouncilPipeline(
 # Unit tests (no agents required)
 node test-runner.mjs
 
+# Model configuration tests (no agents required)
+node test-model-config.mjs
+
 # Integration tests (requires 2+ agents)
 node test-pipeline.mjs
+
+# Run all tests
+node test-runner.mjs && node test-model-config.mjs && node test-pipeline.mjs
 ```
+
+**Test Coverage:**
+- Unit tests: 31 tests (build, exports, types, utilities)
+- Model config tests: 88 tests (models.json, presets, agent creation)
+- Pipeline tests: 7 tests (full 3-stage execution with real agents)
 
 See [TEST_RECORD.md](./TEST_RECORD.md) for detailed test documentation.
 
@@ -261,9 +370,16 @@ See [TEST_RECORD.md](./TEST_RECORD.md) for detailed test documentation.
 agent-council "Your question" [options]
 
 Options:
-  --chairman <name>   Which agent synthesizes the final answer
+  --chairman <spec>   Chairman agent (e.g., 'claude:heavy')
   --timeout <seconds> Per-agent timeout (0 = no timeout)
   --json              Output results as JSON
+  --preset <name>     Use preset (fast, balanced, thorough)
+  --stage1 <specs>    Stage 1 agents (e.g., 'claude:fast,gemini:fast')
+  --stage2 <specs>    Stage 2 agents
+  --list-models       List available models and tiers
+  --list-presets      List available presets
+  --refreshmodels     Refresh models.json from package
+  --config-path       Show config file path
   --help              Show help
   --version           Show version
 ```
@@ -300,12 +416,14 @@ agent-council/
 ├── src/
 │   ├── lib.ts          # Public API exports
 │   ├── pipeline.ts     # Core 3-stage orchestration
+│   ├── model-config.ts # Model tier and preset configuration
 │   ├── agents.ts       # Agent spawning and management
 │   ├── prompts.ts      # Prompt construction
 │   ├── types.ts        # TypeScript definitions
 │   ├── repl.ts         # Interactive REPL mode
 │   └── index.ts        # CLI entry point
 ├── dist/               # Compiled JavaScript + declarations
+├── models.json         # Model definitions and presets
 ├── test-runner.mjs     # Unit test suite
 ├── test-pipeline.mjs   # Integration test suite
 ├── QUICKSTART.md       # Setup and usage guide

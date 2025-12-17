@@ -1,0 +1,366 @@
+{
+  "timestamp": "2025-12-17T03:57:47.730Z",
+  "passed": 88,
+  "failed": 0,
+  "skipped": 0,
+  "total": 88,
+  "results": [
+    {
+      "name": "1.1 models.json file exists",
+      "status": "PASS"
+    },
+    {
+      "name": "1.2 models.json is valid JSON",
+      "status": "PASS"
+    },
+    {
+      "name": "1.3 models.json has required top-level fields",
+      "status": "PASS"
+    },
+    {
+      "name": "1.4 models.json has all three providers",
+      "status": "PASS"
+    },
+    {
+      "name": "1.5 each provider has required fields",
+      "status": "PASS"
+    },
+    {
+      "name": "1.6 each provider has all three tiers",
+      "status": "PASS"
+    },
+    {
+      "name": "1.7 each tier has required fields",
+      "status": "PASS"
+    },
+    {
+      "name": "1.8 only heavy tier has reasoning config",
+      "status": "PASS"
+    },
+    {
+      "name": "1.9 presets have required structure",
+      "status": "PASS"
+    },
+    {
+      "name": "1.10 defaults have required fields",
+      "status": "PASS"
+    },
+    {
+      "name": "2.1 loadModelsConfig returns valid config",
+      "status": "PASS"
+    },
+    {
+      "name": "2.2 loadModelsConfig caches results",
+      "status": "PASS"
+    },
+    {
+      "name": "2.3 loadModelsConfig forceReload bypasses cache",
+      "status": "PASS"
+    },
+    {
+      "name": "2.4 getConfigPath returns valid path",
+      "status": "PASS"
+    },
+    {
+      "name": "2.5 listProviders returns all providers",
+      "status": "PASS"
+    },
+    {
+      "name": "2.6 listTiers returns all tiers",
+      "status": "PASS"
+    },
+    {
+      "name": "2.7 getProviderInfo returns provider config",
+      "status": "PASS"
+    },
+    {
+      "name": "2.8 getProviderInfo returns undefined for invalid provider",
+      "status": "PASS"
+    },
+    {
+      "name": "3.1 createAgentConfig creates valid agent for claude:fast",
+      "status": "PASS"
+    },
+    {
+      "name": "3.2 createAgentConfig creates valid agent for claude:default",
+      "status": "PASS"
+    },
+    {
+      "name": "3.3 createAgentConfig creates valid agent for claude:heavy",
+      "status": "PASS"
+    },
+    {
+      "name": "3.4 createAgentConfig creates valid agent for gemini:fast",
+      "status": "PASS"
+    },
+    {
+      "name": "3.5 createAgentConfig creates valid agent for gemini:default",
+      "status": "PASS"
+    },
+    {
+      "name": "3.6 createAgentConfig creates valid agent for gemini:heavy",
+      "status": "PASS"
+    },
+    {
+      "name": "3.7 createAgentConfig creates valid agent for codex:fast",
+      "status": "PASS"
+    },
+    {
+      "name": "3.8 createAgentConfig creates valid agent for codex:default",
+      "status": "PASS"
+    },
+    {
+      "name": "3.9 createAgentConfig creates valid agent for codex:heavy",
+      "status": "PASS"
+    },
+    {
+      "name": "3.10 createAgentConfig throws for invalid provider",
+      "status": "PASS"
+    },
+    {
+      "name": "3.11 createAgentConfig throws for invalid tier",
+      "status": "PASS"
+    },
+    {
+      "name": "3.12 createAgentConfig includes promptViaStdin",
+      "status": "PASS"
+    },
+    {
+      "name": "3.13 agent command starts with correct CLI",
+      "status": "PASS"
+    },
+    {
+      "name": "4.1 createAgentFromSpec parses claude:fast",
+      "status": "PASS"
+    },
+    {
+      "name": "4.2 createAgentFromSpec parses claude:default",
+      "status": "PASS"
+    },
+    {
+      "name": "4.3 createAgentFromSpec parses claude:heavy",
+      "status": "PASS"
+    },
+    {
+      "name": "4.4 createAgentFromSpec defaults to default tier",
+      "status": "PASS"
+    },
+    {
+      "name": "4.5 createAgentFromSpec works for all providers",
+      "status": "PASS"
+    },
+    {
+      "name": "4.6 createAgentFromSpec throws for invalid tier",
+      "status": "PASS"
+    },
+    {
+      "name": "4.7 parseAgentSpec returns provider and tier",
+      "status": "PASS"
+    },
+    {
+      "name": "4.8 parseAgentSpec defaults tier to default",
+      "status": "PASS"
+    },
+    {
+      "name": "5.1 listPresets returns all presets",
+      "status": "PASS"
+    },
+    {
+      "name": "5.2 getPreset returns fast preset",
+      "status": "PASS"
+    },
+    {
+      "name": "5.3 getPreset returns balanced preset",
+      "status": "PASS"
+    },
+    {
+      "name": "5.4 getPreset returns thorough preset",
+      "status": "PASS"
+    },
+    {
+      "name": "5.5 getPreset throws for invalid preset",
+      "status": "PASS"
+    },
+    {
+      "name": "5.6 fast preset has correct agent counts",
+      "status": "PASS"
+    },
+    {
+      "name": "5.7 thorough preset has more stage2 agents",
+      "status": "PASS"
+    },
+    {
+      "name": "6.1 buildPipelineConfig creates valid config",
+      "status": "PASS"
+    },
+    {
+      "name": "6.2 buildPipelineConfig creates correct number of stage1 agents",
+      "status": "PASS"
+    },
+    {
+      "name": "6.3 buildPipelineConfig creates correct number of stage2 agents",
+      "status": "PASS"
+    },
+    {
+      "name": "6.4 buildPipelineConfig creates chairman",
+      "status": "PASS"
+    },
+    {
+      "name": "6.5 buildPipelineConfig distributes agents across providers",
+      "status": "PASS"
+    },
+    {
+      "name": "6.6 buildPipelineConfig works with single provider",
+      "status": "PASS"
+    },
+    {
+      "name": "6.7 buildPipelineConfig works with two providers",
+      "status": "PASS"
+    },
+    {
+      "name": "6.8 buildPipelineConfig applies correct tier to agents",
+      "status": "PASS"
+    },
+    {
+      "name": "6.9 thorough preset creates 6 stage2 agents",
+      "status": "PASS"
+    },
+    {
+      "name": "6.10 buildPipelineConfig sets useReasoning from preset",
+      "status": "PASS"
+    },
+    {
+      "name": "7.1 claude command includes --print flag",
+      "status": "PASS"
+    },
+    {
+      "name": "7.2 claude command includes --output-format text",
+      "status": "PASS"
+    },
+    {
+      "name": "7.3 gemini command includes --output-format text",
+      "status": "PASS"
+    },
+    {
+      "name": "7.4 codex command includes exec mode",
+      "status": "PASS"
+    },
+    {
+      "name": "7.5 codex command includes --skip-git-repo-check",
+      "status": "PASS"
+    },
+    {
+      "name": "7.6 all agents include --model flag",
+      "status": "PASS"
+    },
+    {
+      "name": "7.7 fast tier agents do NOT include reasoning flags",
+      "status": "PASS"
+    },
+    {
+      "name": "7.8 default tier agents do NOT include reasoning flags",
+      "status": "PASS"
+    },
+    {
+      "name": "7.9 claude:heavy includes --extended-thinking",
+      "status": "PASS"
+    },
+    {
+      "name": "7.10 codex:heavy includes --reasoning-effort xhigh",
+      "status": "PASS"
+    },
+    {
+      "name": "8.1 runEnhancedPipeline is exported",
+      "status": "PASS"
+    },
+    {
+      "name": "8.2 EnhancedPipelineConfig structure is valid",
+      "status": "PASS"
+    },
+    {
+      "name": "8.3 stage1 agents are AgentConfig objects",
+      "status": "PASS"
+    },
+    {
+      "name": "8.4 stage2 agents are AgentConfig objects",
+      "status": "PASS"
+    },
+    {
+      "name": "8.5 chairman is AgentConfig object",
+      "status": "PASS"
+    },
+    {
+      "name": "9.1 empty provider list throws",
+      "status": "PASS"
+    },
+    {
+      "name": "9.2 invalid provider in createAgentConfig throws",
+      "status": "PASS"
+    },
+    {
+      "name": "9.3 case sensitivity in tier names",
+      "status": "PASS"
+    },
+    {
+      "name": "9.4 whitespace handling in spec parsing",
+      "status": "PASS"
+    },
+    {
+      "name": "9.5 colon-only spec defaults tier",
+      "status": "PASS"
+    },
+    {
+      "name": "9.6 preset stage counts are positive integers",
+      "status": "PASS"
+    },
+    {
+      "name": "10.1 Claude model IDs are correct",
+      "status": "PASS"
+    },
+    {
+      "name": "10.2 Gemini model IDs use 3.0",
+      "status": "PASS"
+    },
+    {
+      "name": "10.3 Codex model IDs use 5.2",
+      "status": "PASS"
+    },
+    {
+      "name": "10.4 Gemini fast is flash variant",
+      "status": "PASS"
+    },
+    {
+      "name": "10.5 Gemini default is pro variant",
+      "status": "PASS"
+    },
+    {
+      "name": "10.6 Gemini heavy is deep-think variant",
+      "status": "PASS"
+    },
+    {
+      "name": "10.7 Codex fast is mini variant",
+      "status": "PASS"
+    },
+    {
+      "name": "10.8 Codex heavy is max variant",
+      "status": "PASS"
+    },
+    {
+      "name": "11.1 commandExists returns boolean",
+      "status": "PASS"
+    },
+    {
+      "name": "11.2 commandExists finds node",
+      "status": "PASS"
+    },
+    {
+      "name": "11.3 commandExists returns false for nonexistent",
+      "status": "PASS"
+    }
+  ],
+  "cliAvailability": {
+    "claude": true,
+    "gemini": true,
+    "codex": true
+  }
+}

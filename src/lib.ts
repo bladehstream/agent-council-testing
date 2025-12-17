@@ -8,6 +8,7 @@
 // Core pipeline
 export {
   runCouncilPipeline,
+  runEnhancedPipeline,
   pickChairman,
   extractStage1,
   extractStage2,
@@ -16,7 +17,29 @@ export {
   type PipelineResult,
   type PipelineOptions,
   type PipelineCallbacks,
+  type EnhancedPipelineOptions,
 } from './pipeline.js';
+
+// Model configuration
+export {
+  loadModelsConfig,
+  refreshModelsConfig,
+  getConfigPath,
+  createAgentConfig,
+  createAgentFromSpec,
+  getPreset,
+  listPresets,
+  buildPipelineConfig,
+  listProviders,
+  listTiers,
+  getProviderInfo,
+  parseAgentSpec,
+  type ModelsConfig,
+  type ProviderConfig,
+  type PresetConfig,
+  type TierConfig,
+  type ModelTier,
+} from './model-config.js';
 
 // Agent management
 export {
@@ -48,4 +71,6 @@ export type {
   ConversationEntry,
   SessionState,
   LabelMap,
+  EnhancedPipelineConfig,
+  StageAgentConfig,
 } from './types.js';

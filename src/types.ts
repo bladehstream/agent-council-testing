@@ -37,3 +37,19 @@ export type SessionState = {
   chairman: AgentConfig;
   timeoutMs?: number;
 };
+
+// Enhanced pipeline types for per-stage configuration
+export type ModelTier = "fast" | "default" | "heavy";
+
+export type StageAgentConfig = {
+  agents: AgentConfig[];
+};
+
+export type EnhancedPipelineConfig = {
+  stage1: StageAgentConfig;
+  stage2: StageAgentConfig;
+  stage3: {
+    chairman: AgentConfig;
+    useReasoning: boolean;
+  };
+};
