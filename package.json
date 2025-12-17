@@ -3,9 +3,22 @@
   "version": "0.1.2",
   "description": "Multi-model AI council CLI that provides consensus-driven decisions using Claude, Codex, and Gemini",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/lib.js",
+  "types": "./dist/lib.d.ts",
   "bin": {
     "agent-council": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/lib.d.ts",
+      "import": "./dist/lib.js",
+      "require": "./dist/lib.js"
+    },
+    "./cli": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
   },
   "files": [
     "dist"

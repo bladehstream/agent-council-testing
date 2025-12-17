@@ -109,6 +109,142 @@ During execution, use these keyboard controls:
 | `ESC` | Abort all agents |
 | `Ctrl+C` | Quit |
 
+## Programmatic API
+
+agent-council can also be used as a library:
+
+```typescript
+import {
+  runCouncilPipeline,
+  filterAvailableAgents,
+  pickChairman,
+  DEFAULT_AGENTS,
+  type PipelineCallbacks,
+} from 'agent-council';
+
+// Check which agents are available
+const { available, unavailable } = filterAvailableAgents(DEFAULT_AGENTS);
+console.log(`Available: ${available.map(a => a.name).join(', ')}`);
+console.log(`Unavailable: ${unavailable.map(a => a.name).join(', ')}`);
+
+// Pick a chairman
+const chairman = pickChairman(available);
+
+// Optional: Stage callbacks for progress/checkpointing
+const callbacks: PipelineCallbacks = {
+  onStage1Complete: (results) => {
+    console.log(`Stage 1: ${results.length} responses collected`);
+  },
+  onStage2Complete: async (rankings, aggregate) => {
+    console.log(`Stage 2: Rankings complete`);
+    // Could save checkpoint here
+  },
+  onStage3Complete: (result) => {
+    console.log(`Stage 3: Chairman synthesis complete`);
+  },
+};
+
+// Run the council
+const result = await runCouncilPipeline(
+  "What's the best database for real-time analytics?",
+  available,
+  chairman,
+  { tty: false, silent: true, callbacks }
+);
+
+if (result) {
+  console.log('Final answer:', result.stage3.response);
+
+  // Access intermediate results
+  console.log('Individual responses:', result.stage1);
+  console.log('Peer rankings:', result.stage2);
+  console.log('Aggregate ranking:', result.aggregate);
+}
+```
+
+### Conversation History
+
+```typescript
+import {
+  runCouncilPipeline,
+  buildQuestionWithHistory,
+  type ConversationEntry,
+} from 'agent-council';
+
+const history: ConversationEntry[] = [];
+
+// First question
+const result1 = await runCouncilPipeline(
+  "What database should I use?",
+  available,
+  chairman,
+  { tty: false, silent: true }
+);
+
+// Store for context
+if (result1) {
+  history.push({
+    question: "What database should I use?",
+    stage1: result1.stage1,
+    stage3Response: result1.stage3.response,
+  });
+}
+
+// Follow-up with history context
+const result2 = await runCouncilPipeline(
+  buildQuestionWithHistory("What about cost?", history),
+  available,
+  chairman,
+  { tty: false, silent: true }
+);
+```
+
+### Custom Agents
+
+```typescript
+import { runCouncilPipeline, type AgentConfig } from 'agent-council';
+
+const customAgent: AgentConfig = {
+  name: "ollama",
+  command: ["ollama", "run", "llama2"],
+  promptViaStdin: true,
+};
+
+const agents = [customAgent, ...otherAgents];
+```
+
+### API Reference
+
+#### Core Functions
+
+| Function | Description |
+|----------|-------------|
+| `runCouncilPipeline()` | Execute the full 3-stage council process |
+| `pickChairman()` | Select a chairman from available agents |
+| `filterAvailableAgents()` | Check which agents are installed |
+| `callAgent()` | Execute a single agent (low-level) |
+
+#### Pipeline Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `tty` | boolean | - | Enable interactive TTY rendering |
+| `silent` | boolean | false | Suppress console output |
+| `timeoutMs` | number | undefined | Timeout per agent in milliseconds |
+| `callbacks` | PipelineCallbacks | undefined | Stage completion callbacks |
+
+#### Stage Callbacks
+
+```typescript
+interface PipelineCallbacks {
+  onStage1Complete?: (results: Stage1Result[]) => void | Promise<void>;
+  onStage2Complete?: (results: Stage2Result[], aggregate: AggregateRanking[]) => void | Promise<void>;
+  onStage3Complete?: (result: Stage3Result) => void | Promise<void>;
+}
+```
+
+Callbacks can be synchronous or async. The pipeline awaits async callbacks before proceeding.
+
 ## Development
 
 ```bash

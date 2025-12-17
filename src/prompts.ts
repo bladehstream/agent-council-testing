@@ -1,6 +1,6 @@
 import type { ConversationEntry, Stage1Result, Stage2Result } from "./types.js";
 
-const MAX_HISTORY_ENTRIES = 5;
+export const MAX_HISTORY_ENTRIES = 5;
 
 export function buildQuestionWithHistory(
   question: string,

@@ -10,20 +10,35 @@ import type {
   Stage3Result,
 } from "./types.js";
 
+export type AggregateRanking = { agent: string; averageRank: number; rankingsCount: number };
+
 export type PipelineResult = {
   stage1: Stage1Result[];
   stage2: Stage2Result[];
   stage3: Stage3Result;
-  aggregate: Array<{ agent: string; averageRank: number; rankingsCount: number }>;
+  aggregate: AggregateRanking[];
 };
+
+export interface PipelineCallbacks {
+  onStage1Complete?: (results: Stage1Result[]) => void | Promise<void>;
+  onStage2Complete?: (results: Stage2Result[], aggregate: AggregateRanking[]) => void | Promise<void>;
+  onStage3Complete?: (result: Stage3Result) => void | Promise<void>;
+}
+
+export interface PipelineOptions {
+  timeoutMs?: number;
+  tty: boolean;
+  silent?: boolean;
+  callbacks?: PipelineCallbacks;
+}
 
 export async function runCouncilPipeline(
   question: string,
   agents: AgentConfig[],
   chairman: AgentConfig,
-  options: { timeoutMs?: number; tty: boolean }
+  options: PipelineOptions
 ): Promise<PipelineResult | null> {
-  const { timeoutMs, tty } = options;
+  const { timeoutMs, tty, silent = false, callbacks } = options;
 
   // Stage 1: Individual Responses
   const stage1States = await runAgentsInteractive(
@@ -36,9 +51,14 @@ export async function runCouncilPipeline(
   const stage1 = extractStage1(stage1States);
 
   if (stage1.length === 0) {
-    console.log(chalk.red("No agent responses were completed; aborting."));
+    if (!silent) {
+      console.log(chalk.red("No agent responses were completed; aborting."));
+    }
     return null;
   }
+
+  // Stage 1 callback
+  await callbacks?.onStage1Complete?.(stage1);
 
   // Build label map for Stage 2
   const labels = stage1.map((_, idx) => `Response ${String.fromCharCode(65 + idx)}`);
@@ -61,8 +81,14 @@ export async function runCouncilPipeline(
   // Calculate aggregate rankings
   const aggregate = calculateAggregateRankings(stage2, labelToAgent);
 
+  // Stage 2 callback
+  await callbacks?.onStage2Complete?.(stage2, aggregate);
+
   // Stage 3: Chairman Synthesis
-  const stage3 = await runChairman(question, stage1, stage2, chairman, timeoutMs);
+  const stage3 = await runChairman(question, stage1, stage2, chairman, timeoutMs, silent);
+
+  // Stage 3 callback
+  await callbacks?.onStage3Complete?.(stage3);
 
   return { stage1, stage2, stage3, aggregate };
 }
@@ -111,9 +137,12 @@ export async function runChairman(
   stage1: Stage1Result[],
   stage2: Stage2Result[],
   chairman: AgentConfig,
-  timeoutMs: number | undefined
+  timeoutMs: number | undefined,
+  silent: boolean = false
 ): Promise<Stage3Result> {
-  console.log(`\nRunning chairman: ${chairman.name}...`);
+  if (!silent) {
+    console.log(`\nRunning chairman: ${chairman.name}...`);
+  }
   const prompt = buildChairmanPrompt(userQuery, stage1, stage2);
   const state: AgentState = {
     config: chairman,

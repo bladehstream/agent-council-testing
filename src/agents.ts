@@ -4,6 +4,14 @@ import chalk from "chalk";
 import type { AgentConfig, AgentState, AgentStatus } from "./types.js";
 
 /**
+ * Result of filtering agents by command availability
+ */
+export interface FilterResult {
+  available: AgentConfig[];
+  unavailable: Array<{ name: string; command: string }>;
+}
+
+/**
  * Check if a command exists in PATH
  */
 export function commandExists(cmd: string): boolean {
@@ -14,10 +22,7 @@ export function commandExists(cmd: string): boolean {
 /**
  * Filter agents to only include those with available commands
  */
-export function filterAvailableAgents(agents: AgentConfig[]): {
-  available: AgentConfig[];
-  unavailable: Array<{ name: string; command: string }>;
-} {
+export function filterAvailableAgents(agents: AgentConfig[]): FilterResult {
   const available: AgentConfig[] = [];
   const unavailable: Array<{ name: string; command: string }> = [];
 
