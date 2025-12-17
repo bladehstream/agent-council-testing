@@ -68,7 +68,7 @@ npm test
 # or: node tests/test-runner.mjs && node tests/test-model-config.mjs
 ```
 
-Expected output: `SUMMARY: 31 passed, 0 failed, 0 skipped` followed by `MODEL CONFIG TESTS: 101 passed, 0 failed, 0 skipped`
+Expected output: `SUMMARY: 31 passed, 0 failed, 0 skipped` followed by `MODEL CONFIG TESTS: 103 passed, 0 failed, 0 skipped`
 
 ### Pipeline Tests (requires 2+ agents)
 ```bash
@@ -158,9 +158,9 @@ Stage spec formats:
 
 | Tier | Claude | Gemini | Codex | Use Case |
 |------|--------|--------|-------|----------|
-| `fast` | Haiku | 3.0 Flash | 5.2 Mini | Quick, cost-sensitive |
-| `default` | Sonnet | 3.0 Pro | 5.2 | Balanced |
-| `heavy` | Opus +thinking | 3.0 Deep Think | 5.2 Max +xhigh | Complex reasoning |
+| `fast` | Haiku | Flash | 5.1 Codex Mini | Quick, cost-sensitive |
+| `default` | Sonnet | Auto | 5.1 Codex | Balanced |
+| `heavy` | Opus +thinking | Pro | 5.1 Codex Max | Complex reasoning |
 
 ### Programmatic Usage
 

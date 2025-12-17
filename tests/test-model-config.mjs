@@ -150,15 +150,17 @@ await runTest('1.7 each tier has required fields', async () => {
   }
 });
 
-await runTest('1.8 only heavy tier has reasoning config', async () => {
+await runTest('1.8 only claude heavy tier has reasoning config', async () => {
   const config = JSON.parse(fs.readFileSync('./models.json', 'utf-8'));
   for (const [provName, provider] of Object.entries(config.providers)) {
     // Fast and default should NOT have reasoning
     assert(!provider.tiers.fast.reasoning, `${provName}:fast should NOT have reasoning`);
     assert(!provider.tiers.default.reasoning, `${provName}:default should NOT have reasoning`);
-    // Heavy SHOULD have reasoning (for claude and codex)
-    if (provName === 'claude' || provName === 'codex') {
+    // Only claude:heavy has reasoning config (gemini/codex use model selection)
+    if (provName === 'claude') {
       assert(provider.tiers.heavy.reasoning, `${provName}:heavy SHOULD have reasoning`);
+    } else {
+      assert(!provider.tiers.heavy.reasoning, `${provName}:heavy should NOT have reasoning config`);
     }
   }
 });
@@ -243,6 +245,27 @@ await runTest('2.8 getProviderInfo returns undefined for invalid provider', asyn
   assertEqual(info, undefined, 'Should return undefined');
 });
 
+await runTest('2.9 refreshModelsConfig executes without error', async () => {
+  // refreshModelsConfig returns void but should not throw
+  let threw = false;
+  try {
+    refreshModelsConfig();
+  } catch (e) {
+    threw = true;
+  }
+  assert(!threw, 'refreshModelsConfig should not throw');
+});
+
+await runTest('2.10 refreshModelsConfig resets cache', async () => {
+  // Load initial config
+  const config1 = loadModelsConfig();
+  // Refresh resets cache (returns void)
+  refreshModelsConfig();
+  // Force reload should return valid config
+  const config2 = loadModelsConfig(true);
+  assertEqual(config1.version, config2.version, 'Versions should match after refresh');
+});
+
 // ============================================================================
 // Category 3: Agent Config Creation
 // ============================================================================
@@ -273,39 +296,39 @@ await runTest('3.3 createAgentConfig creates valid agent for claude:heavy', asyn
 await runTest('3.4 createAgentConfig creates valid agent for gemini:fast', async () => {
   const agent = createAgentConfig('gemini', 'fast');
   assertEqual(agent.name, 'gemini:fast', 'Name should be gemini:fast');
-  assertIncludes(agent.command, 'gemini-3.0-flash', 'Command should include flash model');
+  assertIncludes(agent.command, 'flash', 'Command should include flash model');
 });
 
 await runTest('3.5 createAgentConfig creates valid agent for gemini:default', async () => {
   const agent = createAgentConfig('gemini', 'default');
   assertEqual(agent.name, 'gemini:default', 'Name should be gemini:default');
-  assertIncludes(agent.command, 'gemini-3.0-pro', 'Command should include pro model');
+  assertIncludes(agent.command, 'auto', 'Command should include auto model');
 });
 
 await runTest('3.6 createAgentConfig creates valid agent for gemini:heavy', async () => {
   const agent = createAgentConfig('gemini', 'heavy');
   assertEqual(agent.name, 'gemini:heavy', 'Name should be gemini:heavy');
-  assertIncludes(agent.command, 'gemini-3.0-deep-think', 'Command should include deep-think model');
+  assertIncludes(agent.command, 'pro', 'Command should include pro model');
 });
 
 await runTest('3.7 createAgentConfig creates valid agent for codex:fast', async () => {
   const agent = createAgentConfig('codex', 'fast');
   assertEqual(agent.name, 'codex:fast', 'Name should be codex:fast');
-  assertIncludes(agent.command, 'gpt-5.2-codex-mini', 'Command should include mini model');
+  assertIncludes(agent.command, 'gpt-5.1-codex-mini', 'Command should include mini model');
 });
 
 await runTest('3.8 createAgentConfig creates valid agent for codex:default', async () => {
   const agent = createAgentConfig('codex', 'default');
   assertEqual(agent.name, 'codex:default', 'Name should be codex:default');
-  assertIncludes(agent.command, 'gpt-5.2-codex', 'Command should include codex model');
+  assertIncludes(agent.command, 'gpt-5.1-codex', 'Command should include codex model');
 });
 
 await runTest('3.9 createAgentConfig creates valid agent for codex:heavy', async () => {
   const agent = createAgentConfig('codex', 'heavy');
   assertEqual(agent.name, 'codex:heavy', 'Name should be codex:heavy');
-  assertIncludes(agent.command, 'gpt-5.2-codex-max', 'Command should include max model');
-  assertIncludes(agent.command, '--reasoning-effort', 'Heavy tier should include reasoning flag');
-  assertIncludes(agent.command, 'xhigh', 'Heavy tier should use xhigh reasoning');
+  assertIncludes(agent.command, 'gpt-5.1-codex-max', 'Command should include max model');
+  // Codex reasoning is determined by model choice, not a flag
+  assert(!agent.command.includes('--reasoning-effort'), 'Codex does not use --reasoning-effort flag');
 });
 
 await runTest('3.10 createAgentConfig throws for invalid provider', async () => {
@@ -619,10 +642,11 @@ await runTest('7.9 claude:heavy includes --extended-thinking', async () => {
   assertIncludes(agent.command, '--extended-thinking', 'Should include extended thinking');
 });
 
-await runTest('7.10 codex:heavy includes --reasoning-effort xhigh', async () => {
+await runTest('7.10 codex:heavy uses max model (no reasoning flag)', async () => {
   const agent = createAgentConfig('codex', 'heavy');
-  assertIncludes(agent.command, '--reasoning-effort', 'Should include reasoning effort');
-  assertIncludes(agent.command, 'xhigh', 'Should use xhigh level');
+  assertIncludes(agent.command, 'gpt-5.1-codex-max', 'Should use max model');
+  // Codex reasoning is via model selection, not a flag
+  assert(!agent.command.includes('--reasoning-effort'), 'Codex does not use --reasoning-effort');
 });
 
 // ============================================================================
@@ -750,43 +774,45 @@ await runTest('10.1 Claude model IDs are correct', async () => {
   assertEqual(config.providers.claude.tiers.heavy.model, 'opus', 'Claude heavy should be opus');
 });
 
-await runTest('10.2 Gemini model IDs use 3.0', async () => {
+await runTest('10.2 Gemini model IDs use auto-routing names', async () => {
   const config = loadModelsConfig();
-  assert(config.providers.gemini.tiers.fast.model.includes('3.0'), 'Gemini fast should use 3.0');
-  assert(config.providers.gemini.tiers.default.model.includes('3.0'), 'Gemini default should use 3.0');
-  assert(config.providers.gemini.tiers.heavy.model.includes('3.0'), 'Gemini heavy should use 3.0');
+  assertEqual(config.providers.gemini.tiers.fast.model, 'flash', 'Gemini fast should be flash');
+  assertEqual(config.providers.gemini.tiers.default.model, 'auto', 'Gemini default should be auto');
+  assertEqual(config.providers.gemini.tiers.heavy.model, 'pro', 'Gemini heavy should be pro');
 });
 
-await runTest('10.3 Codex model IDs use 5.2', async () => {
+await runTest('10.3 Codex model IDs use gpt-5.1-codex', async () => {
   const config = loadModelsConfig();
-  assert(config.providers.codex.tiers.fast.model.includes('5.2'), 'Codex fast should use 5.2');
-  assert(config.providers.codex.tiers.default.model.includes('5.2'), 'Codex default should use 5.2');
-  assert(config.providers.codex.tiers.heavy.model.includes('5.2'), 'Codex heavy should use 5.2');
+  assertEqual(config.providers.codex.tiers.fast.model, 'gpt-5.1-codex-mini', 'Codex fast should be mini');
+  assertEqual(config.providers.codex.tiers.default.model, 'gpt-5.1-codex', 'Codex default should be codex');
+  assertEqual(config.providers.codex.tiers.heavy.model, 'gpt-5.1-codex-max', 'Codex heavy should be max');
 });
 
-await runTest('10.4 Gemini fast is flash variant', async () => {
+await runTest('10.4 Gemini fast is flash', async () => {
   const config = loadModelsConfig();
-  assert(config.providers.gemini.tiers.fast.model.includes('flash'), 'Gemini fast should be flash');
+  assertEqual(config.providers.gemini.tiers.fast.model, 'flash', 'Gemini fast should be flash');
 });
 
-await runTest('10.5 Gemini default is pro variant', async () => {
+await runTest('10.5 Gemini default is auto', async () => {
   const config = loadModelsConfig();
-  assert(config.providers.gemini.tiers.default.model.includes('pro'), 'Gemini default should be pro');
+  assertEqual(config.providers.gemini.tiers.default.model, 'auto', 'Gemini default should be auto');
 });
 
-await runTest('10.6 Gemini heavy is deep-think variant', async () => {
+await runTest('10.6 Gemini heavy is pro', async () => {
   const config = loadModelsConfig();
-  assert(config.providers.gemini.tiers.heavy.model.includes('deep-think'), 'Gemini heavy should be deep-think');
+  assertEqual(config.providers.gemini.tiers.heavy.model, 'pro', 'Gemini heavy should be pro');
 });
 
 await runTest('10.7 Codex fast is mini variant', async () => {
   const config = loadModelsConfig();
-  assert(config.providers.codex.tiers.fast.model.includes('mini'), 'Codex fast should be mini');
+  assertEqual(config.providers.codex.tiers.fast.model, 'gpt-5.1-codex-mini', 'Codex fast should be mini');
 });
 
-await runTest('10.8 Codex heavy is max variant', async () => {
+await runTest('10.8 Codex heavy uses max model for reasoning', async () => {
   const config = loadModelsConfig();
-  assert(config.providers.codex.tiers.heavy.model.includes('max'), 'Codex heavy should be max');
+  assertEqual(config.providers.codex.tiers.heavy.model, 'gpt-5.1-codex-max', 'Codex heavy should use max model');
+  // Codex reasoning is via model choice, no separate config
+  assert(!config.providers.codex.tiers.heavy.reasoning, 'Codex heavy should not have reasoning config');
 });
 
 // ============================================================================
