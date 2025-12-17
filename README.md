@@ -59,6 +59,11 @@ npm install
 npm run build
 ```
 
+> **IMPORTANT - Development Workflow:**
+> This is a TypeScript project. Source files are in `src/`, compiled output is in `dist/`.
+> **After ANY change to source files, you MUST run `npm run build`** to compile.
+> The CLI runs from `dist/`, so changes to `src/` won't take effect until rebuilt.
+
 ### Prerequisites
 
 At least 2 of the following AI CLI tools must be installed and authenticated:
@@ -135,11 +140,11 @@ Fine-tune which models run at each stage:
 # ✓ claude (claude)
 #     fast: haiku - Claude 3.5 Haiku
 #     default: sonnet - Claude 4 Sonnet
-#     heavy: opus +reasoning - Claude Opus 4.5
+#     heavy: opus - Claude Opus 4.5
 # ✓ gemini (gemini)
-#     fast: gemini-3.0-flash
-#     default: gemini-3.0-pro
-#     heavy: gemini-3.0-deep-think
+#     fast: gemini-2.5-flash-lite
+#     default: gemini-2.5-flash
+#     heavy: gemini-2.5-pro
 # ...
 
 # See preset configurations
@@ -150,9 +155,9 @@ Fine-tune which models run at each stage:
 
 | Tier | Claude | Gemini | Codex | Best For |
 |------|--------|--------|-------|----------|
-| `fast` | Haiku | 3.0 Flash | 5.2 Mini | Quick responses, cost-sensitive |
-| `default` | Sonnet | 3.0 Pro | 5.2 | Balanced quality/speed |
-| `heavy` | Opus +thinking | 3.0 Deep Think | 5.2 Max +xhigh | Complex reasoning |
+| `fast` | Haiku | 2.5 Flash Lite | 5.1 Codex Mini | Quick responses, cost-sensitive |
+| `default` | Sonnet | 2.5 Flash | 5.1 Codex | Balanced quality/speed |
+| `heavy` | Opus | 2.5 Pro | 5.1 Codex Max | Complex reasoning |
 
 ### Presets Reference
 
@@ -160,7 +165,7 @@ Fine-tune which models run at each stage:
 |--------|---------|---------|----------|----------|
 | `fast` | 3x fast | 3x fast | default | Quick answers, cost-sensitive |
 | `balanced` | 3x default | 3x default | heavy | General purpose |
-| `thorough` | 3x heavy | 6x heavy | heavy +reasoning | Complex problems, critical decisions |
+| `thorough` | 3x heavy | 6x heavy | heavy | Complex problems, critical decisions |
 
 ### Other CLI Options
 
@@ -420,17 +425,28 @@ const result = await runCouncilPipeline(
 npm test
 # or: node tests/test-runner.mjs && node tests/test-model-config.mjs
 
-# Integration tests (requires 2+ agents)
+# Real-world tests - contract, integration, smoke (requires agents)
+npm run test:real-world
+
+# Pipeline tests (requires 2+ agents)
 npm run test:pipeline
 
-# Run all tests including pipeline
+# Run all tests
 npm run test:all
 ```
 
 **Test Coverage:**
 - Unit tests: 31 tests (build, exports, types, utilities)
-- Model config tests: 101 tests (models.json, presets, agent creation, stage spec parsing)
+- Model config tests: 103 tests (models.json, presets, agent creation, stage spec parsing)
+- Real-world tests: 21 tests (contract, integration, smoke tests with real CLIs)
 - Pipeline tests: 7 tests (full 3-stage execution with real agents)
+
+**Real-world tests verify:**
+- CLI flags actually exist (checked against `--help` output)
+- Model names are accepted by actual APIs
+- Generated commands work with real CLIs
+- WebSearch tool works with correct flags
+- End-to-end pipeline with real agents
 
 See [TEST_RECORD.md](./TEST_RECORD.md) for detailed test documentation.
 
@@ -502,8 +518,9 @@ agent-council/
 ├── dist/               # Compiled JavaScript + declarations
 ├── tests/              # Test suites
 │   ├── test-runner.mjs       # Unit tests (31)
-│   ├── test-model-config.mjs # Model config tests (101)
-│   └── test-pipeline.mjs     # Integration tests (7)
+│   ├── test-model-config.mjs # Model config tests (103)
+│   ├── test-real-world.mjs   # Contract/integration/smoke tests (21)
+│   └── test-pipeline.mjs     # Pipeline integration tests (7)
 ├── models.json         # Model definitions and presets
 ├── QUICKSTART.md       # Setup and usage guide
 ├── TEST_RECORD.md      # Test documentation

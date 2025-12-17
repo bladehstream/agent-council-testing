@@ -32,6 +32,11 @@ npm install
 npm run build
 ```
 
+> **IMPORTANT - Development Workflow:**
+> This is a TypeScript project. Source files are in `src/`, compiled output is in `dist/`.
+> **After ANY change to source files, you MUST run `npm run build`** to compile.
+> The CLI runs from `dist/`, so changes to `src/` won't take effect until rebuilt.
+
 ## Quick Verification
 
 ### 1. Check available agents
@@ -69,6 +74,19 @@ npm test
 ```
 
 Expected output: `SUMMARY: 31 passed, 0 failed, 0 skipped` followed by `MODEL CONFIG TESTS: 103 passed, 0 failed, 0 skipped`
+
+### Real-World Tests (requires agents)
+```bash
+npm run test:real-world
+```
+
+These tests verify actual CLI behavior:
+- Contract tests: CLI flags exist in `--help` output
+- Model validation: Model names accepted by APIs
+- Integration: Generated commands work with real CLIs
+- Smoke tests: End-to-end pipeline with real agents
+
+Expected output: `REAL-WORLD TESTS: 21 passed, 0 failed, 0 skipped`
 
 ### Pipeline Tests (requires 2+ agents)
 ```bash
@@ -158,9 +176,9 @@ Stage spec formats:
 
 | Tier | Claude | Gemini | Codex | Use Case |
 |------|--------|--------|-------|----------|
-| `fast` | Haiku | Flash | 5.1 Codex Mini | Quick, cost-sensitive |
-| `default` | Sonnet | Auto | 5.1 Codex | Balanced |
-| `heavy` | Opus +thinking | Pro | 5.1 Codex Max | Complex reasoning |
+| `fast` | Haiku | 2.5 Flash Lite | 5.1 Codex Mini | Quick, cost-sensitive |
+| `default` | Sonnet | 2.5 Flash | 5.1 Codex | Balanced |
+| `heavy` | Opus | 2.5 Pro | 5.1 Codex Max | Complex reasoning |
 
 ### Programmatic Usage
 
@@ -431,8 +449,9 @@ agent-council/
 ├── dist/               # Compiled output
 ├── tests/              # Test suites
 │   ├── test-runner.mjs       # Unit tests (31)
-│   ├── test-model-config.mjs # Model config tests (101)
-│   └── test-pipeline.mjs     # Integration tests (7)
+│   ├── test-model-config.mjs # Model config tests (103)
+│   ├── test-real-world.mjs   # Contract/integration/smoke (21)
+│   └── test-pipeline.mjs     # Pipeline integration tests (7)
 ├── models.json         # Model definitions and presets
 ├── package.json
 └── tsconfig.json
