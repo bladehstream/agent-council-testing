@@ -140,7 +140,7 @@ export function getConfigPath(): string {
 
 const BASE_AGENT_COMMANDS: Record<string, { command: string[]; promptViaStdin: boolean }> = {
   codex: {
-    command: ["codex", "exec", "--skip-git-repo-check", "-"],
+    command: ["codex", "exec", "--skip-git-repo-check", "--search", "-"],
     promptViaStdin: true,
   },
   claude: {
