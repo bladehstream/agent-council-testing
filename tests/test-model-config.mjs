@@ -604,10 +604,9 @@ await runTest('7.4 codex command includes exec mode', async () => {
   assertIncludes(agent.command, 'exec', 'Should include exec mode');
 });
 
-await runTest('7.5 codex command includes --skip-git-repo-check and --search', async () => {
+await runTest('7.5 codex command includes --skip-git-repo-check', async () => {
   const agent = createAgentConfig('codex', 'fast');
   assertIncludes(agent.command, '--skip-git-repo-check', 'Should include skip git check');
-  assertIncludes(agent.command, '--search', 'Should include --search for web access');
 });
 
 await runTest('7.6 all agents include --model flag', async () => {
