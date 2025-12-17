@@ -1,9 +1,9 @@
 {
-  "timestamp": "2025-12-17T04:33:17.128Z",
-  "passed": 88,
+  "timestamp": "2025-12-17T04:41:38.906Z",
+  "passed": 101,
   "failed": 0,
   "skipped": 0,
-  "total": 88,
+  "total": 101,
   "results": [
     {
       "name": "1.1 models.json file exists",
@@ -355,6 +355,58 @@
     },
     {
       "name": "11.3 commandExists returns false for nonexistent",
+      "status": "PASS"
+    },
+    {
+      "name": "12.1 parseStageSpec is exported",
+      "status": "PASS"
+    },
+    {
+      "name": "12.2 parseStageSpec parses tier-only spec \"fast\"",
+      "status": "PASS"
+    },
+    {
+      "name": "12.3 parseStageSpec parses tier-only spec \"default\"",
+      "status": "PASS"
+    },
+    {
+      "name": "12.4 parseStageSpec parses tier-only spec \"heavy\"",
+      "status": "PASS"
+    },
+    {
+      "name": "12.5 parseStageSpec parses count:tier \"6:fast\"",
+      "status": "PASS"
+    },
+    {
+      "name": "12.6 parseStageSpec distributes agents across providers",
+      "status": "PASS"
+    },
+    {
+      "name": "12.7 parseStageSpec parses count:tier \"3:default\"",
+      "status": "PASS"
+    },
+    {
+      "name": "12.8 parseStageSpec parses count:tier \"1:heavy\"",
+      "status": "PASS"
+    },
+    {
+      "name": "12.9 parseStageSpec parses explicit agent specs",
+      "status": "PASS"
+    },
+    {
+      "name": "12.10 parseStageSpec parses single explicit agent",
+      "status": "PASS"
+    },
+    {
+      "name": "12.11 parseStageSpec handles whitespace in tier spec",
+      "status": "PASS"
+    },
+    {
+      "name": "12.12 parseStageSpec handles whitespace in count:tier",
+      "status": "PASS"
+    },
+    {
+      "name": "12.13 parseStageSpec with single provider and count",
       "status": "PASS"
     }
   ],

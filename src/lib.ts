@@ -34,11 +34,13 @@ export {
   listTiers,
   getProviderInfo,
   parseAgentSpec,
+  parseStageSpec,
   type ModelsConfig,
   type ProviderConfig,
   type PresetConfig,
   type TierConfig,
   type ModelTier,
+  type ParsedStageSpec,
 } from './model-config.js';
 
 // Agent management

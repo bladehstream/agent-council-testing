@@ -15,6 +15,7 @@ import {
   listPresets,
   listProviders,
   buildPipelineConfig,
+  parseStageSpec,
   type ModelTier,
 } from "./model-config.js";
 
@@ -29,12 +30,12 @@ function buildArgs() {
     .option("respond", {
       alias: "r",
       type: "string",
-      describe: "Responders: [count] <tier> or <agent specs> (e.g., 'fast', '3 default', 'claude:fast,gemini:fast')",
+      describe: "Responders: <tier>, <count>:<tier>, or <agent specs> (e.g., 'fast', '3:default', 'claude:fast,gemini:fast')",
     })
     .option("evaluate", {
       alias: "e",
       type: "string",
-      describe: "Evaluators: [count] <tier> or <agent specs> (e.g., 'default', '6 fast')",
+      describe: "Evaluators: <tier>, <count>:<tier>, or <agent specs> (e.g., 'default', '6:fast')",
     })
     .option("chairman", {
       alias: "c",
@@ -117,42 +118,6 @@ function getAvailableProviders(): string[] {
     const cli = config.providers[provider].cli;
     return commandExists(cli);
   });
-}
-
-const VALID_TIERS = ["fast", "default", "heavy"];
-
-interface ParsedStageConfig {
-  agents: ReturnType<typeof createAgentFromSpec>[];
-  count?: number;
-}
-
-function parseStageSpec(spec: string, availableProviders: string[]): ParsedStageConfig {
-  const trimmed = spec.trim();
-
-  // Check for count + tier format: "6 fast" or "3 default"
-  const countTierMatch = trimmed.match(/^(\d+)\s+(fast|default|heavy)$/);
-  if (countTierMatch) {
-    const count = parseInt(countTierMatch[1], 10);
-    const tier = countTierMatch[2];
-    // Distribute agents across providers
-    const agents: ReturnType<typeof createAgentFromSpec>[] = [];
-    for (let i = 0; i < count; i++) {
-      const provider = availableProviders[i % availableProviders.length];
-      agents.push(createAgentFromSpec(`${provider}:${tier}`));
-    }
-    return { agents, count };
-  }
-
-  // Check if it's a tier-only value (e.g., "fast", "default", "heavy")
-  if (VALID_TIERS.includes(trimmed)) {
-    // Expand to all available providers with this tier
-    const agents = availableProviders.map((p) => createAgentFromSpec(`${p}:${trimmed}`));
-    return { agents };
-  }
-
-  // Otherwise parse as comma-separated agent specs
-  const agents = spec.split(",").map((s) => createAgentFromSpec(s.trim()));
-  return { agents };
 }
 
 async function main() {

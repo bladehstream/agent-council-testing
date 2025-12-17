@@ -84,6 +84,7 @@ const {
   listTiers,
   getProviderInfo,
   parseAgentSpec,
+  parseStageSpec,
   runEnhancedPipeline,
   commandExists,
 } = lib;
@@ -806,6 +807,101 @@ await runTest('11.2 commandExists finds node', async () => {
 await runTest('11.3 commandExists returns false for nonexistent', async () => {
   const result = commandExists('definitely-not-a-real-command-12345');
   assertEqual(result, false, 'Fake command should not exist');
+});
+
+// ============================================================================
+// Category 12: Stage Spec Parsing (count:tier syntax)
+// ============================================================================
+log('\n=== Category 12: Stage Spec Parsing ===');
+
+await runTest('12.1 parseStageSpec is exported', async () => {
+  assertType(parseStageSpec, 'function', 'parseStageSpec should be a function');
+});
+
+await runTest('12.2 parseStageSpec parses tier-only spec "fast"', async () => {
+  const result = parseStageSpec('fast', ['claude', 'gemini', 'codex']);
+  assertEqual(result.agents.length, 3, 'Should create 3 agents (one per provider)');
+  assert(result.agents.every(a => a.name.endsWith(':fast')), 'All agents should be fast tier');
+});
+
+await runTest('12.3 parseStageSpec parses tier-only spec "default"', async () => {
+  const result = parseStageSpec('default', ['claude', 'gemini']);
+  assertEqual(result.agents.length, 2, 'Should create 2 agents');
+  assert(result.agents.every(a => a.name.endsWith(':default')), 'All agents should be default tier');
+});
+
+await runTest('12.4 parseStageSpec parses tier-only spec "heavy"', async () => {
+  const result = parseStageSpec('heavy', ['claude']);
+  assertEqual(result.agents.length, 1, 'Should create 1 agent');
+  assertEqual(result.agents[0].name, 'claude:heavy', 'Should be claude:heavy');
+});
+
+await runTest('12.5 parseStageSpec parses count:tier "6:fast"', async () => {
+  const result = parseStageSpec('6:fast', ['claude', 'gemini', 'codex']);
+  assertEqual(result.agents.length, 6, 'Should create 6 agents');
+  assertEqual(result.count, 6, 'Count should be 6');
+  assert(result.agents.every(a => a.name.endsWith(':fast')), 'All agents should be fast tier');
+});
+
+await runTest('12.6 parseStageSpec distributes agents across providers', async () => {
+  const result = parseStageSpec('6:fast', ['claude', 'gemini', 'codex']);
+  const names = result.agents.map(a => a.name);
+  // With 6 agents and 3 providers: claude, gemini, codex, claude, gemini, codex
+  assertEqual(names[0], 'claude:fast', 'Agent 0 should be claude');
+  assertEqual(names[1], 'gemini:fast', 'Agent 1 should be gemini');
+  assertEqual(names[2], 'codex:fast', 'Agent 2 should be codex');
+  assertEqual(names[3], 'claude:fast', 'Agent 3 should be claude');
+  assertEqual(names[4], 'gemini:fast', 'Agent 4 should be gemini');
+  assertEqual(names[5], 'codex:fast', 'Agent 5 should be codex');
+});
+
+await runTest('12.7 parseStageSpec parses count:tier "3:default"', async () => {
+  const result = parseStageSpec('3:default', ['claude', 'gemini']);
+  assertEqual(result.agents.length, 3, 'Should create 3 agents');
+  assertEqual(result.count, 3, 'Count should be 3');
+  // With 3 agents and 2 providers: claude, gemini, claude
+  assertEqual(result.agents[0].name, 'claude:default', 'Agent 0');
+  assertEqual(result.agents[1].name, 'gemini:default', 'Agent 1');
+  assertEqual(result.agents[2].name, 'claude:default', 'Agent 2');
+});
+
+await runTest('12.8 parseStageSpec parses count:tier "1:heavy"', async () => {
+  const result = parseStageSpec('1:heavy', ['gemini']);
+  assertEqual(result.agents.length, 1, 'Should create 1 agent');
+  assertEqual(result.count, 1, 'Count should be 1');
+  assertEqual(result.agents[0].name, 'gemini:heavy', 'Should be gemini:heavy');
+});
+
+await runTest('12.9 parseStageSpec parses explicit agent specs', async () => {
+  const result = parseStageSpec('claude:fast,gemini:default', ['claude', 'gemini', 'codex']);
+  assertEqual(result.agents.length, 2, 'Should create 2 agents');
+  assertEqual(result.agents[0].name, 'claude:fast', 'First agent');
+  assertEqual(result.agents[1].name, 'gemini:default', 'Second agent');
+  assertEqual(result.count, undefined, 'Count should be undefined for explicit specs');
+});
+
+await runTest('12.10 parseStageSpec parses single explicit agent', async () => {
+  const result = parseStageSpec('codex:heavy', ['claude', 'gemini', 'codex']);
+  assertEqual(result.agents.length, 1, 'Should create 1 agent');
+  assertEqual(result.agents[0].name, 'codex:heavy', 'Should be codex:heavy');
+});
+
+await runTest('12.11 parseStageSpec handles whitespace in tier spec', async () => {
+  const result = parseStageSpec('  fast  ', ['claude']);
+  assertEqual(result.agents.length, 1, 'Should create 1 agent');
+  assertEqual(result.agents[0].name, 'claude:fast', 'Should trim whitespace');
+});
+
+await runTest('12.12 parseStageSpec handles whitespace in count:tier', async () => {
+  const result = parseStageSpec('  3:default  ', ['claude', 'gemini']);
+  assertEqual(result.agents.length, 3, 'Should create 3 agents');
+  assertEqual(result.count, 3, 'Count should be 3');
+});
+
+await runTest('12.13 parseStageSpec with single provider and count', async () => {
+  const result = parseStageSpec('4:fast', ['claude']);
+  assertEqual(result.agents.length, 4, 'Should create 4 agents');
+  assert(result.agents.every(a => a.name === 'claude:fast'), 'All should be claude:fast');
 });
 
 // Check which CLIs are available for informational purposes

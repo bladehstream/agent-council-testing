@@ -125,7 +125,7 @@ Fine-tune which models run at each stage using `-r` (respond), `-e` (evaluate), 
 
 # More evaluators for better consensus (6 agents using fast tier)
 ./dist/index.js "Best authentication approach?" \
-  -r default -e "6 fast" -c "gemini:heavy"
+  -r default -e 6:fast -c gemini:heavy
 
 # JSON output for scripting
 ./dist/index.js "Question" -p fast --json
@@ -136,7 +136,7 @@ Fine-tune which models run at each stage using `-r` (respond), `-e` (evaluate), 
 
 Stage spec formats:
 - `fast` / `default` / `heavy` - All providers with that tier
-- `6 fast` - 6 agents distributed across providers
+- `6:fast` - 6 agents distributed across providers
 - `claude:fast,gemini:default` - Explicit agent specs
 
 ### Discover Available Models

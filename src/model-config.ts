@@ -293,3 +293,59 @@ export function parseAgentSpec(spec: string): { provider: string; tier: ModelTie
 
   return { provider, tier };
 }
+
+// ============================================================================
+// Stage Spec Parsing (for CLI)
+// ============================================================================
+
+export interface ParsedStageSpec {
+  agents: AgentConfig[];
+  count?: number;
+}
+
+const VALID_TIERS: ModelTier[] = ["fast", "default", "heavy"];
+
+/**
+ * Parse a stage specification string into agent configurations.
+ *
+ * Supported formats:
+ * - Tier only: "fast", "default", "heavy" → all providers with that tier
+ * - Count:tier: "6:fast", "3:default" → N agents distributed across providers
+ * - Agent specs: "claude:fast,gemini:default" → explicit agent list
+ *
+ * @param spec The stage specification string
+ * @param availableProviders List of available provider names
+ * @param config Optional models configuration
+ * @returns Parsed stage configuration with agents array
+ */
+export function parseStageSpec(
+  spec: string,
+  availableProviders: string[],
+  config: ModelsConfig = loadModelsConfig()
+): ParsedStageSpec {
+  const trimmed = spec.trim();
+
+  // Check for count:tier format: "6:fast" or "3:default"
+  const countTierMatch = trimmed.match(/^(\d+):(fast|default|heavy)$/);
+  if (countTierMatch) {
+    const count = parseInt(countTierMatch[1], 10);
+    const tier = countTierMatch[2] as ModelTier;
+    // Distribute agents across providers
+    const agents: AgentConfig[] = [];
+    for (let i = 0; i < count; i++) {
+      const provider = availableProviders[i % availableProviders.length];
+      agents.push(createAgentConfig(provider, tier, config));
+    }
+    return { agents, count };
+  }
+
+  // Check if it's a tier-only value (e.g., "fast", "default", "heavy")
+  if (VALID_TIERS.includes(trimmed as ModelTier)) {
+    const agents = availableProviders.map((p) => createAgentConfig(p, trimmed as ModelTier, config));
+    return { agents };
+  }
+
+  // Otherwise parse as comma-separated agent specs
+  const agents = spec.split(",").map((s) => createAgentFromSpec(s.trim()));
+  return { agents };
+}

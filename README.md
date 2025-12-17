@@ -116,7 +116,7 @@ Fine-tune which models run at each stage:
 
 # More evaluators for better consensus (6 agents in stage 2)
 ./dist/index.js "What's the best authentication approach?" \
-  -r default -e "6 fast" -c "gemini:heavy"
+  -r default -e 6:fast -c gemini:heavy
 
 # Single provider, different tiers per stage
 ./dist/index.js "Review this code design" \
@@ -459,7 +459,7 @@ Options:
 
 Stage Spec Formats:
   <tier>              All providers with tier (e.g., 'fast')
-  <count> <tier>      N agents distributed (e.g., '6 fast')
+  <count>:<tier>      N agents distributed (e.g., '6:fast')
   <agent specs>       Explicit agents (e.g., 'claude:fast,gemini:default')
 ```
 
