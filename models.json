@@ -39,19 +39,19 @@
       "flag": "--model",
       "tiers": {
         "fast": {
-          "model": "Flash",
-          "fullId": "Flash",
-          "description": "Gemini Flash - Fast, cost-effective responses"
+          "model": "gemini-2.5-flash",
+          "fullId": "gemini-2.5-flash",
+          "description": "Gemini 2.5 Flash - Fast, cost-effective responses"
         },
         "default": {
-          "model": "Auto",
-          "fullId": "Auto",
-          "description": "Gemini Auto - Automatic model selection and routing"
+          "model": "gemini-2.5-pro",
+          "fullId": "gemini-2.5-pro",
+          "description": "Gemini 2.5 Pro - Balanced performance"
         },
         "heavy": {
-          "model": "Pro",
-          "fullId": "Pro",
-          "description": "Gemini Pro - Deep reasoning and complex tasks"
+          "model": "gemini-2.5-pro",
+          "fullId": "gemini-2.5-pro",
+          "description": "Gemini 2.5 Pro - Deep reasoning and complex tasks"
         }
       },
       "reasoning": {
