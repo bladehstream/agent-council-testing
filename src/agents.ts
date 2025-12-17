@@ -42,7 +42,7 @@ export const DEFAULT_AGENTS: AgentConfig[] = [
   // Codex: non-interactive exec mode, prompt as positional arg.
   { name: "codex", command: ["codex", "exec", "--skip-git-repo-check"], promptViaStdin: false },
   // Claude: --print for non-interactive single response, text output format, web search enabled.
-  { name: "claude", command: ["claude", "--print", "--output-format", "text", "--allowedTools", "WebSearch"], promptViaStdin: true },
+  { name: "claude", command: ["claude", "--print", "--output-format", "text", "--allowedTools", "web_search"], promptViaStdin: true },
   // Gemini: non-interactive text output, prompt as positional arg.
   { name: "gemini", command: ["gemini", "--output-format", "text"], promptViaStdin: false },
 ];

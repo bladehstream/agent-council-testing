@@ -144,7 +144,7 @@ const BASE_AGENT_COMMANDS: Record<string, { command: string[]; promptViaStdin: b
     promptViaStdin: false, // Codex uses positional args for prompt
   },
   claude: {
-    command: ["claude", "--print", "--output-format", "text", "--allowedTools", "WebSearch"],
+    command: ["claude", "--print", "--output-format", "text", "--allowedTools", "web_search"],
     promptViaStdin: true,
   },
   gemini: {

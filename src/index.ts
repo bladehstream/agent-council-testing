@@ -222,6 +222,7 @@ async function main() {
     } else {
       printFinal(result.stage1, result.stage2, result.aggregate, result.stage3);
     }
+    process.exit(0);
   } else {
     // Classic mode (backwards compatible)
     const { available, unavailable } = filterAvailableAgents(DEFAULT_AGENTS);
@@ -262,6 +263,7 @@ async function main() {
     } else {
       printFinal(result.stage1, result.stage2, result.aggregate, result.stage3);
     }
+    process.exit(0);
   }
 }
 
