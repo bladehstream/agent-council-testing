@@ -150,18 +150,13 @@ await runTest('1.7 each tier has required fields', async () => {
   }
 });
 
-await runTest('1.8 only claude heavy tier has reasoning config', async () => {
+await runTest('1.8 no tier has reasoning config (CLI flags not supported)', async () => {
   const config = JSON.parse(fs.readFileSync('./models.json', 'utf-8'));
   for (const [provName, provider] of Object.entries(config.providers)) {
-    // Fast and default should NOT have reasoning
+    // No tier should have reasoning config - CLIs don't support reasoning flags
     assert(!provider.tiers.fast.reasoning, `${provName}:fast should NOT have reasoning`);
     assert(!provider.tiers.default.reasoning, `${provName}:default should NOT have reasoning`);
-    // Only claude:heavy has reasoning config (gemini/codex use model selection)
-    if (provName === 'claude') {
-      assert(provider.tiers.heavy.reasoning, `${provName}:heavy SHOULD have reasoning`);
-    } else {
-      assert(!provider.tiers.heavy.reasoning, `${provName}:heavy should NOT have reasoning config`);
-    }
+    assert(!provider.tiers.heavy.reasoning, `${provName}:heavy should NOT have reasoning config`);
   }
 });
 
@@ -290,7 +285,6 @@ await runTest('3.3 createAgentConfig creates valid agent for claude:heavy', asyn
   const agent = createAgentConfig('claude', 'heavy');
   assertEqual(agent.name, 'claude:heavy', 'Name should be claude:heavy');
   assertIncludes(agent.command, 'opus', 'Command should include opus model');
-  assertIncludes(agent.command, '--extended-thinking', 'Heavy tier should include reasoning flag');
 });
 
 await runTest('3.4 createAgentConfig creates valid agent for gemini:fast', async () => {
@@ -637,9 +631,9 @@ await runTest('7.8 default tier agents do NOT include reasoning flags', async ()
   assert(!codexDefault.command.includes('--reasoning-effort'), 'Codex default should not have reasoning effort');
 });
 
-await runTest('7.9 claude:heavy includes --extended-thinking', async () => {
+await runTest('7.9 claude:heavy uses opus model', async () => {
   const agent = createAgentConfig('claude', 'heavy');
-  assertIncludes(agent.command, '--extended-thinking', 'Should include extended thinking');
+  assertIncludes(agent.command, 'opus', 'Should use opus model');
 });
 
 await runTest('7.10 codex:heavy uses max model (no reasoning flag)', async () => {

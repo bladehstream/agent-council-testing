@@ -20,18 +20,14 @@
         "heavy": {
           "model": "opus",
           "fullId": "claude-opus-4-5-20251101",
-          "description": "Claude Opus 4.5 - Most capable reasoning with extended thinking",
-          "reasoning": {
-            "flag": "--extended-thinking",
-            "value": true
-          }
+          "description": "Claude Opus 4.5 - Most capable reasoning"
         }
       },
       "reasoning": {
-        "supported": true,
-        "method": "extended-thinking",
-        "flag": "--extended-thinking",
-        "note": "Extended thinking only used on heavy tier"
+        "supported": false,
+        "method": "none",
+        "flag": "",
+        "note": "Claude CLI does not support extended thinking flags"
       }
     },
     "gemini": {
