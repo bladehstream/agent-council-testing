@@ -79,83 +79,159 @@ node -e "import('./dist/lib.js').then(({filterAvailableAgents, DEFAULT_AGENTS}) 
 
 ## Quick Start
 
-### CLI Usage
+### Basic Usage
 
 ```bash
-# Single question
+# Simple question (uses all available agents with default models)
 ./dist/index.js "What's the best database for real-time analytics?"
-
-# With JSON output
-./dist/index.js "Explain microservices" --json
-
-# With timeout (seconds per agent)
-./dist/index.js "Complex question" --timeout 120
-
-# Specify chairman
-./dist/index.js "Question" --chairman claude
 
 # Interactive REPL mode
 ./dist/index.js
 ```
 
-### Model Selection
+### Using Presets (Recommended)
 
-Use presets or per-stage configuration to control which models run at each stage:
+Presets provide optimized configurations for different use cases:
 
 ```bash
-# Use a preset (fast, balanced, thorough)
-./dist/index.js "Question" --preset fast
+# Fast mode - quick answers, lower cost (Haiku, Flash, Mini)
+./dist/index.js "What is dependency injection?" --preset fast
 
-# Custom per-stage configuration
-./dist/index.js "Question" \
+# Balanced mode - good quality, reasonable speed (Sonnet, Pro, Codex)
+./dist/index.js "Compare REST vs GraphQL for a mobile app" --preset balanced
+
+# Thorough mode - maximum quality, deep reasoning (Opus, Deep Think, Max)
+./dist/index.js "Design a distributed caching strategy for 1M concurrent users" --preset thorough
+```
+
+### Custom Model Selection
+
+Fine-tune which models run at each stage:
+
+```bash
+# Use fast models for research, heavy model for synthesis
+./dist/index.js "Explain microservices architecture" \
   --stage1 "claude:fast,gemini:fast,codex:fast" \
-  --stage2 "claude:default,gemini:default" \
   --chairman "claude:heavy"
 
-# List available models and tiers
+# More rankers for better consensus (6 agents in stage 2)
+./dist/index.js "What's the best authentication approach?" \
+  --stage1 "claude:default,gemini:default,codex:default" \
+  --stage2 "claude:fast,gemini:fast,codex:fast,claude:fast,gemini:fast,codex:fast" \
+  --chairman "gemini:heavy"
+
+# Single provider, different tiers per stage
+./dist/index.js "Review this code design" \
+  --stage1 "claude:fast,claude:fast,claude:default" \
+  --stage2 "claude:default,claude:default" \
+  --chairman "claude:heavy"
+```
+
+### Discover Available Models
+
+```bash
+# See all models with availability status
 ./dist/index.js --list-models
 
-# List available presets
+# Output:
+# ✓ claude (claude)
+#     fast: haiku - Claude 3.5 Haiku
+#     default: sonnet - Claude 4 Sonnet
+#     heavy: opus +reasoning - Claude Opus 4.5
+# ✓ gemini (gemini)
+#     fast: gemini-3.0-flash
+#     default: gemini-3.0-pro
+#     heavy: gemini-3.0-deep-think
+# ...
+
+# See preset configurations
 ./dist/index.js --list-presets
 ```
 
-**Model Tiers:**
-- `fast`: Optimized for speed (Claude Haiku, Gemini Flash, Codex Mini)
-- `default`: Balanced performance (Claude Sonnet, Gemini Pro, Codex)
-- `heavy`: Maximum capability with reasoning (Claude Opus, Gemini Deep Think, Codex Max)
+### Model Tiers Reference
 
-**Presets:**
+| Tier | Claude | Gemini | Codex | Best For |
+|------|--------|--------|-------|----------|
+| `fast` | Haiku | 3.0 Flash | 5.2 Mini | Quick responses, cost-sensitive |
+| `default` | Sonnet | 3.0 Pro | 5.2 | Balanced quality/speed |
+| `heavy` | Opus +thinking | 3.0 Deep Think | 5.2 Max +xhigh | Complex reasoning |
+
+### Presets Reference
+
 | Preset | Stage 1 | Stage 2 | Chairman | Use Case |
 |--------|---------|---------|----------|----------|
 | `fast` | 3x fast | 3x fast | default | Quick answers, cost-sensitive |
 | `balanced` | 3x default | 3x default | heavy | General purpose |
-| `thorough` | 3x heavy | 6x heavy | heavy +reasoning | Complex problems |
+| `thorough` | 3x heavy | 6x heavy | heavy +reasoning | Complex problems, critical decisions |
+
+### Other CLI Options
+
+```bash
+# JSON output for scripting
+./dist/index.js "Question" --preset fast --json
+
+# Timeout per agent (seconds)
+./dist/index.js "Complex question" --preset thorough --timeout 120
+
+# Refresh model definitions
+./dist/index.js --refreshmodels
+```
 
 ### Programmatic Usage
 
 ```typescript
 import {
-  runCouncilPipeline,
-  filterAvailableAgents,
-  pickChairman,
-  DEFAULT_AGENTS,
+  runEnhancedPipeline,
+  createAgentFromSpec,
+  getPreset,
+  buildPipelineConfig,
+  loadModelsConfig,
+  listProviders,
 } from 'agent-council';
 
-// Check available agents
-const { available } = filterAvailableAgents(DEFAULT_AGENTS);
-const chairman = pickChairman(available);
+// Option 1: Use a preset (simplest)
+const config = loadModelsConfig();
+const availableProviders = listProviders(config).filter(p => /* check availability */);
+const preset = getPreset('balanced', config);
+const pipelineConfig = buildPipelineConfig(preset, availableProviders, config);
 
-// Run the council
-const result = await runCouncilPipeline(
-  "What's the best approach for authentication?",
-  available,
-  chairman,
-  { tty: false, silent: true }
-);
+const result = await runEnhancedPipeline("Your question", {
+  config: pipelineConfig,
+  tty: false,
+  silent: true,
+});
 
-if (result) {
-  console.log('Final answer:', result.stage3.response);
-  console.log('Aggregate ranking:', result.aggregate);
+// Option 2: Custom per-stage configuration
+const customConfig = {
+  stage1: {
+    agents: [
+      createAgentFromSpec('claude:fast'),
+      createAgentFromSpec('gemini:fast'),
+    ],
+  },
+  stage2: {
+    agents: [
+      createAgentFromSpec('claude:default'),
+      createAgentFromSpec('gemini:default'),
+      createAgentFromSpec('codex:default'),
+    ],
+  },
+  stage3: {
+    chairman: createAgentFromSpec('claude:heavy'),
+    useReasoning: true,
+  },
+};
+
+const result2 = await runEnhancedPipeline("Complex question", {
+  config: customConfig,
+  tty: false,
+  silent: true,
+  timeoutMs: 120000,
+});
+
+if (result2) {
+  console.log('Final answer:', result2.stage3.response);
+  console.log('Top ranked:', result2.aggregate[0]?.agent);
 }
 ```
 

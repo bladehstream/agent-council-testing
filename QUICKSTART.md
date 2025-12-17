@@ -69,6 +69,13 @@ node test-runner.mjs
 
 Expected output: `SUMMARY: 31 passed, 0 failed, 0 skipped`
 
+### Model Configuration Tests (no agents required)
+```bash
+node test-model-config.mjs
+```
+
+Expected output: `MODEL CONFIG TESTS: 88 passed, 0 failed, 0 skipped`
+
 ### Pipeline Tests (requires 2+ agents)
 ```bash
 node test-pipeline.mjs
@@ -78,28 +85,174 @@ Note: Pipeline tests take 60-90 seconds each due to real AI agent calls.
 
 ## Usage Examples
 
-### CLI Usage
+### CLI Usage - Basic
 
 ```bash
-# Single question mode
+# Simple question (uses default models)
 ./dist/index.js "What is the best programming language for web development?"
-
-# With JSON output
-./dist/index.js "Explain microservices" --json
-
-# With timeout (seconds)
-./dist/index.js "Complex question" --timeout 120
-
-# Specify chairman
-./dist/index.js "Question" --chairman claude
 
 # Interactive REPL mode
 ./dist/index.js
 ```
 
+### CLI Usage - Presets (Recommended)
+
+Presets optimize the model selection for different use cases:
+
+```bash
+# Fast preset - quick answers, lower cost
+# Uses: Haiku, Flash, Mini for stages 1-2, default for chairman
+./dist/index.js "What is dependency injection?" --preset fast
+
+# Balanced preset - good quality, reasonable speed
+# Uses: Sonnet, Pro, Codex for stages 1-2, heavy for chairman
+./dist/index.js "Compare REST vs GraphQL" --preset balanced
+
+# Thorough preset - maximum quality with deep reasoning
+# Uses: Opus, Deep Think, Max with extended reasoning
+./dist/index.js "Design a distributed system for 1M users" --preset thorough
+```
+
+### CLI Usage - Custom Model Selection
+
+Fine-tune which models run at each stage:
+
+```bash
+# Fast research, heavy synthesis
+./dist/index.js "Explain microservices" \
+  --stage1 "claude:fast,gemini:fast,codex:fast" \
+  --chairman "claude:heavy"
+
+# More rankers for better consensus
+./dist/index.js "Best authentication approach?" \
+  --stage1 "claude:default,gemini:default,codex:default" \
+  --stage2 "claude:fast,gemini:fast,codex:fast,claude:fast,gemini:fast,codex:fast" \
+  --chairman "gemini:heavy"
+
+# JSON output for scripting
+./dist/index.js "Question" --preset fast --json
+
+# With timeout (seconds per agent)
+./dist/index.js "Complex question" --preset thorough --timeout 120
+```
+
+### Discover Available Models
+
+```bash
+# List all models with availability
+./dist/index.js --list-models
+
+# List preset configurations
+./dist/index.js --list-presets
+
+# Show config file path
+./dist/index.js --config-path
+
+# Refresh model definitions
+./dist/index.js --refreshmodels
+```
+
+### Model Tiers
+
+| Tier | Claude | Gemini | Codex | Use Case |
+|------|--------|--------|-------|----------|
+| `fast` | Haiku | 3.0 Flash | 5.2 Mini | Quick, cost-sensitive |
+| `default` | Sonnet | 3.0 Pro | 5.2 | Balanced |
+| `heavy` | Opus +thinking | 3.0 Deep Think | 5.2 Max +xhigh | Complex reasoning |
+
 ### Programmatic Usage
 
-#### Basic Pipeline
+#### Using Presets (Recommended)
+```javascript
+import {
+  runEnhancedPipeline,
+  getPreset,
+  buildPipelineConfig,
+  loadModelsConfig,
+  listProviders,
+  commandExists,
+} from 'agent-council';
+
+// Load config and find available providers
+const config = loadModelsConfig();
+const availableProviders = listProviders(config).filter(p =>
+  commandExists(config.providers[p].cli)
+);
+
+// Use a preset
+const preset = getPreset('balanced', config);
+const pipelineConfig = buildPipelineConfig(preset, availableProviders, config);
+
+const result = await runEnhancedPipeline(
+  "What's the best approach for authentication?",
+  { config: pipelineConfig, tty: false, silent: true, timeoutMs: 60000 }
+);
+
+if (result) {
+  console.log('Final answer:', result.stage3.response);
+  console.log('Top ranked:', result.aggregate[0]?.agent);
+}
+```
+
+#### Custom Per-Stage Configuration
+```javascript
+import {
+  runEnhancedPipeline,
+  createAgentFromSpec,
+} from 'agent-council';
+
+// Define different models for each stage
+const customConfig = {
+  stage1: {
+    agents: [
+      createAgentFromSpec('claude:fast'),
+      createAgentFromSpec('gemini:fast'),
+      createAgentFromSpec('codex:fast'),
+    ],
+  },
+  stage2: {
+    agents: [
+      createAgentFromSpec('claude:default'),
+      createAgentFromSpec('gemini:default'),
+    ],
+  },
+  stage3: {
+    chairman: createAgentFromSpec('claude:heavy'),
+    useReasoning: true,
+  },
+};
+
+const result = await runEnhancedPipeline("Design a caching strategy", {
+  config: customConfig,
+  tty: false,
+  silent: true,
+  timeoutMs: 120000,
+});
+```
+
+#### With Stage Callbacks
+```javascript
+const result = await runEnhancedPipeline("Your question", {
+  config: pipelineConfig,
+  tty: false,
+  silent: true,
+  callbacks: {
+    onStage1Complete: (results) => {
+      console.log(`Stage 1: Got ${results.length} responses`);
+      results.forEach(r => console.log(`  - ${r.agent}: ${r.response.slice(0, 50)}...`));
+    },
+    onStage2Complete: (rankings, aggregate) => {
+      console.log(`Stage 2: Rankings complete`);
+      console.log('Leaderboard:', aggregate.map(a => `${a.agent}: ${a.averageRank}`).join(', '));
+    },
+    onStage3Complete: (result) => {
+      console.log(`Stage 3: ${result.agent} synthesized final answer`);
+    },
+  },
+});
+```
+
+#### Legacy API (Basic Pipeline)
 ```javascript
 import {
   runCouncilPipeline,
@@ -108,49 +261,15 @@ import {
   DEFAULT_AGENTS,
 } from 'agent-council';
 
-// Check available agents
+// Uses default models (no tier selection)
 const { available } = filterAvailableAgents(DEFAULT_AGENTS);
-console.log(`Using agents: ${available.map(a => a.name).join(', ')}`);
-
-// Pick a chairman (defaults to gemini, falls back to first available)
 const chairman = pickChairman(available);
 
-// Run the council
 const result = await runCouncilPipeline(
-  "What's the best approach for handling authentication?",
+  "Simple question",
   available,
   chairman,
-  { tty: false, silent: true, timeoutMs: 60000 }
-);
-
-if (result) {
-  console.log('Final answer:', result.stage3.response);
-}
-```
-
-#### With Stage Callbacks
-```javascript
-const result = await runCouncilPipeline(
-  "Your question here",
-  available,
-  chairman,
-  {
-    tty: false,
-    silent: true,
-    timeoutMs: 60000,
-    callbacks: {
-      onStage1Complete: (results) => {
-        console.log(`Stage 1: Got ${results.length} individual responses`);
-      },
-      onStage2Complete: (rankings, aggregate) => {
-        console.log(`Stage 2: Got ${rankings.length} peer rankings`);
-        console.log('Top ranked:', aggregate[0]?.agent);
-      },
-      onStage3Complete: (result) => {
-        console.log(`Stage 3: Chairman ${result.agent} synthesized final answer`);
-      },
-    },
-  }
+  { tty: false, silent: true }
 );
 ```
 
@@ -161,7 +280,7 @@ import { buildQuestionWithHistory } from 'agent-council';
 const history = [];
 
 // First question
-const result1 = await runCouncilPipeline("What database should I use?", ...);
+const result1 = await runEnhancedPipeline("What database should I use?", { config, ... });
 history.push({
   question: "What database should I use?",
   stage1: result1.stage1,
@@ -169,15 +288,13 @@ history.push({
 });
 
 // Follow-up with context
-const result2 = await runCouncilPipeline(
+const result2 = await runEnhancedPipeline(
   buildQuestionWithHistory("What about cost?", history),
-  available,
-  chairman,
-  { tty: false, silent: true }
+  { config, tty: false, silent: true }
 );
 ```
 
-#### Custom Agents
+#### Custom Agents (Non-Standard CLIs)
 ```javascript
 import { runCouncilPipeline } from 'agent-council';
 
@@ -197,20 +314,42 @@ const customAgents = [
 const result = await runCouncilPipeline(
   "Your question",
   customAgents,
-  customAgents[0], // first agent as chairman
+  customAgents[0],
   { tty: false, silent: true }
 );
 ```
 
 ## API Reference
 
-### Core Functions
+### Pipeline Functions
 
 | Function | Description |
 |----------|-------------|
-| `runCouncilPipeline(question, agents, chairman, options)` | Run full 3-stage council |
+| `runEnhancedPipeline(question, options)` | Run with per-stage model configuration |
+| `runCouncilPipeline(question, agents, chairman, options)` | Run with default models (legacy) |
 | `pickChairman(agents, name?)` | Select chairman from available agents |
+
+### Model Configuration
+
+| Function | Description |
+|----------|-------------|
+| `loadModelsConfig()` | Load models.json configuration |
+| `refreshModelsConfig()` | Refresh config from package defaults |
+| `createAgentConfig(provider, tier)` | Create agent for provider:tier |
+| `createAgentFromSpec(spec)` | Create agent from "claude:heavy" format |
+| `getPreset(name)` | Get preset configuration (fast/balanced/thorough) |
+| `listPresets()` | List available preset names |
+| `buildPipelineConfig(preset, providers)` | Build pipeline config from preset |
+| `listProviders()` | List available provider names |
+| `listTiers()` | List available tier names |
+| `getProviderInfo(name)` | Get provider configuration |
+
+### Agent Utilities
+
+| Function | Description |
+|----------|-------------|
 | `filterAvailableAgents(agents)` | Check which agents are installed |
+| `commandExists(command)` | Check if CLI command exists |
 | `callAgent(state, prompt, timeoutMs)` | Execute single agent (low-level) |
 
 ### Prompt Builders
@@ -279,16 +418,19 @@ interface PipelineResult {
 ```
 agent-council/
 ├── src/
-│   ├── lib.ts        # Public API exports
-│   ├── pipeline.ts   # Core orchestration
-│   ├── agents.ts     # Agent spawning
-│   ├── prompts.ts    # Prompt builders
-│   ├── types.ts      # TypeScript types
-│   ├── repl.ts       # Interactive mode
-│   └── index.ts      # CLI entry point
-├── dist/             # Compiled output
-├── test-runner.mjs   # Unit tests
-├── test-pipeline.mjs # Integration tests
+│   ├── lib.ts          # Public API exports
+│   ├── pipeline.ts     # Core orchestration + enhanced pipeline
+│   ├── model-config.ts # Model tiers, presets, agent creation
+│   ├── agents.ts       # Agent spawning
+│   ├── prompts.ts      # Prompt builders
+│   ├── types.ts        # TypeScript types
+│   ├── repl.ts         # Interactive mode
+│   └── index.ts        # CLI entry point
+├── dist/               # Compiled output
+├── models.json         # Model definitions and presets
+├── test-runner.mjs     # Unit tests (31 tests)
+├── test-model-config.mjs # Model config tests (88 tests)
+├── test-pipeline.mjs   # Integration tests (7 tests)
 ├── package.json
 └── tsconfig.json
 ```
