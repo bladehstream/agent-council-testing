@@ -111,20 +111,18 @@ Fine-tune which models run at each stage:
 ```bash
 # Use fast models for research, heavy model for synthesis
 ./dist/index.js "Explain microservices architecture" \
-  --stage1 "claude:fast,gemini:fast,codex:fast" \
-  --chairman "claude:heavy"
+  -r "claude:fast,gemini:fast,codex:fast" \
+  -c "claude:heavy"
 
-# More rankers for better consensus (6 agents in stage 2)
+# More evaluators for better consensus (6 agents in stage 2)
 ./dist/index.js "What's the best authentication approach?" \
-  --stage1 "claude:default,gemini:default,codex:default" \
-  --stage2 "claude:fast,gemini:fast,codex:fast,claude:fast,gemini:fast,codex:fast" \
-  --chairman "gemini:heavy"
+  -r default -e "6 fast" -c "gemini:heavy"
 
 # Single provider, different tiers per stage
 ./dist/index.js "Review this code design" \
-  --stage1 "claude:fast,claude:fast,claude:default" \
-  --stage2 "claude:default,claude:default" \
-  --chairman "claude:heavy"
+  -r "claude:fast,claude:fast,claude:default" \
+  -e "claude:default,claude:default" \
+  -c "claude:heavy"
 ```
 
 ### Discover Available Models
@@ -446,18 +444,23 @@ See [TEST_RECORD.md](./TEST_RECORD.md) for detailed test documentation.
 agent-council "Your question" [options]
 
 Options:
-  --chairman <spec>   Chairman agent (e.g., 'claude:heavy')
-  --timeout <seconds> Per-agent timeout (0 = no timeout)
+  -r, --respond       Responders: [count] <tier> or <agent specs>
+  -e, --evaluate      Evaluators: [count] <tier> or <agent specs>
+  -c, --chairman      Chairman agent (e.g., 'claude:heavy')
+  -p, --preset        Use preset (fast, balanced, thorough)
+  -t, --timeout       Per-agent timeout in seconds (0 = no timeout)
   --json              Output results as JSON
-  --preset <name>     Use preset (fast, balanced, thorough)
-  --stage1 <specs>    Stage 1 agents (e.g., 'claude:fast,gemini:fast')
-  --stage2 <specs>    Stage 2 agents
   --list-models       List available models and tiers
   --list-presets      List available presets
   --refreshmodels     Refresh models.json from package
   --config-path       Show config file path
   --help              Show help
   --version           Show version
+
+Stage Spec Formats:
+  <tier>              All providers with tier (e.g., 'fast')
+  <count> <tier>      N agents distributed (e.g., '6 fast')
+  <agent specs>       Explicit agents (e.g., 'claude:fast,gemini:default')
 ```
 
 ### Interactive REPL Mode

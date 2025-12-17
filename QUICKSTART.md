@@ -115,26 +115,29 @@ Presets optimize the model selection for different use cases:
 
 ### CLI Usage - Custom Model Selection
 
-Fine-tune which models run at each stage:
+Fine-tune which models run at each stage using `-r` (respond), `-e` (evaluate), `-c` (chairman):
 
 ```bash
 # Fast research, heavy synthesis
 ./dist/index.js "Explain microservices" \
-  --stage1 "claude:fast,gemini:fast,codex:fast" \
-  --chairman "claude:heavy"
+  -r "claude:fast,gemini:fast,codex:fast" \
+  -c "claude:heavy"
 
-# More rankers for better consensus
+# More evaluators for better consensus (6 agents using fast tier)
 ./dist/index.js "Best authentication approach?" \
-  --stage1 "claude:default,gemini:default,codex:default" \
-  --stage2 "claude:fast,gemini:fast,codex:fast,claude:fast,gemini:fast,codex:fast" \
-  --chairman "gemini:heavy"
+  -r default -e "6 fast" -c "gemini:heavy"
 
 # JSON output for scripting
-./dist/index.js "Question" --preset fast --json
+./dist/index.js "Question" -p fast --json
 
 # With timeout (seconds per agent)
-./dist/index.js "Complex question" --preset thorough --timeout 120
+./dist/index.js "Complex question" -p thorough -t 120
 ```
+
+Stage spec formats:
+- `fast` / `default` / `heavy` - All providers with that tier
+- `6 fast` - 6 agents distributed across providers
+- `claude:fast,gemini:default` - Explicit agent specs
 
 ### Discover Available Models
 

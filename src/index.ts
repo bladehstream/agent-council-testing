@@ -26,11 +26,28 @@ function buildArgs() {
       describe: "The question to send to the council (omit to enter interactive mode)",
       type: "string",
     })
-    .option("chairman", {
+    .option("respond", {
+      alias: "r",
       type: "string",
-      describe: "Which agent synthesizes the final answer (e.g., 'claude:heavy')",
+      describe: "Responders: [count] <tier> or <agent specs> (e.g., 'fast', '3 default', 'claude:fast,gemini:fast')",
+    })
+    .option("evaluate", {
+      alias: "e",
+      type: "string",
+      describe: "Evaluators: [count] <tier> or <agent specs> (e.g., 'default', '6 fast')",
+    })
+    .option("chairman", {
+      alias: "c",
+      type: "string",
+      describe: "Chairman agent (e.g., 'claude:heavy')",
+    })
+    .option("preset", {
+      alias: "p",
+      type: "string",
+      describe: "Use a preset (fast, balanced, thorough)",
     })
     .option("timeout", {
+      alias: "t",
       type: "number",
       default: 0,
       describe: "Per-agent timeout in seconds (0 means no timeout)",
@@ -39,18 +56,6 @@ function buildArgs() {
       type: "boolean",
       default: false,
       describe: "Output results as JSON",
-    })
-    .option("preset", {
-      type: "string",
-      describe: "Use a preset configuration (fast, balanced, thorough)",
-    })
-    .option("stage1", {
-      type: "string",
-      describe: "Stage 1 agents (e.g., 'claude:fast,gemini:fast,codex:fast')",
-    })
-    .option("stage2", {
-      type: "string",
-      describe: "Stage 2 agents (e.g., 'claude:default,gemini:default')",
     })
     .option("refreshmodels", {
       type: "boolean",
@@ -114,8 +119,40 @@ function getAvailableProviders(): string[] {
   });
 }
 
-function parseAgentList(spec: string): ReturnType<typeof createAgentFromSpec>[] {
-  return spec.split(",").map((s) => createAgentFromSpec(s.trim()));
+const VALID_TIERS = ["fast", "default", "heavy"];
+
+interface ParsedStageConfig {
+  agents: ReturnType<typeof createAgentFromSpec>[];
+  count?: number;
+}
+
+function parseStageSpec(spec: string, availableProviders: string[]): ParsedStageConfig {
+  const trimmed = spec.trim();
+
+  // Check for count + tier format: "6 fast" or "3 default"
+  const countTierMatch = trimmed.match(/^(\d+)\s+(fast|default|heavy)$/);
+  if (countTierMatch) {
+    const count = parseInt(countTierMatch[1], 10);
+    const tier = countTierMatch[2];
+    // Distribute agents across providers
+    const agents: ReturnType<typeof createAgentFromSpec>[] = [];
+    for (let i = 0; i < count; i++) {
+      const provider = availableProviders[i % availableProviders.length];
+      agents.push(createAgentFromSpec(`${provider}:${tier}`));
+    }
+    return { agents, count };
+  }
+
+  // Check if it's a tier-only value (e.g., "fast", "default", "heavy")
+  if (VALID_TIERS.includes(trimmed)) {
+    // Expand to all available providers with this tier
+    const agents = availableProviders.map((p) => createAgentFromSpec(`${p}:${trimmed}`));
+    return { agents };
+  }
+
+  // Otherwise parse as comma-separated agent specs
+  const agents = spec.split(",").map((s) => createAgentFromSpec(s.trim()));
+  return { agents };
 }
 
 async function main() {
@@ -159,7 +196,7 @@ async function main() {
   const useTty = Boolean(process.stdin.isTTY && process.stdout.isTTY);
 
   // Determine if using enhanced mode (preset or stage flags)
-  const useEnhanced = argv.preset || argv.stage1 || argv.stage2;
+  const useEnhanced = argv.preset || argv.respond || argv.evaluate;
 
   if (useEnhanced) {
     // Enhanced pipeline mode
@@ -167,27 +204,27 @@ async function main() {
 
     let pipelineConfig;
 
-    if (argv.preset) {
-      // Use preset configuration
+    if (argv.preset && !argv.respond && !argv.evaluate) {
+      // Use preset configuration (only if no stage overrides)
       const preset = getPreset(argv.preset, config);
       pipelineConfig = buildPipelineConfig(preset, availableProviders, config);
       console.log(chalk.cyan(`Using preset: ${argv.preset}\n`));
     } else {
-      // Build config from stage flags
-      const stage1Agents = argv.stage1
-        ? parseAgentList(argv.stage1)
-        : availableProviders.map((p) => createAgentFromSpec(`${p}:default`));
+      // Build config from stage flags (or preset as base with overrides)
+      const respondConfig = argv.respond
+        ? parseStageSpec(argv.respond, availableProviders)
+        : { agents: availableProviders.map((p) => createAgentFromSpec(`${p}:default`)) };
 
-      const stage2Agents = argv.stage2
-        ? parseAgentList(argv.stage2)
-        : availableProviders.map((p) => createAgentFromSpec(`${p}:default`));
+      const evaluateConfig = argv.evaluate
+        ? parseStageSpec(argv.evaluate, availableProviders)
+        : { agents: availableProviders.map((p) => createAgentFromSpec(`${p}:default`)) };
 
       const chairmanSpec = argv.chairman || `${availableProviders[0]}:heavy`;
       const chairman = createAgentFromSpec(chairmanSpec);
 
       pipelineConfig = {
-        stage1: { agents: stage1Agents },
-        stage2: { agents: stage2Agents },
+        stage1: { agents: respondConfig.agents },
+        stage2: { agents: evaluateConfig.agents },
         stage3: { chairman, useReasoning: false },
       };
     }
