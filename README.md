@@ -165,7 +165,7 @@ Fine-tune which models run at each stage:
 
 | Preset | Stage 1 | Stage 2 | Chairman (Pass 1 / Pass 2) | Use Case |
 |--------|---------|---------|----------------------------|----------|
-| `fast` | 3x fast | 3x fast | default / fast | Quick answers, cost-sensitive |
+| `fast` | 3x fast | 3x fast | default / default | Quick answers, cost-sensitive |
 | `balanced` | 3x default | 3x default | heavy / default | General purpose |
 | `thorough` | 3x heavy | 6x heavy | heavy / heavy | Complex problems, critical decisions |
 
@@ -557,12 +557,12 @@ When generating large structured outputs (e.g., 50KB+ technical specifications),
 
 #### Tier Progression
 
-Pass 2 uses a lower model tier than Pass 1 (N-1), since the critical thinking is done in Pass 1:
+Pass 2 uses the `default` tier as a minimum floor to ensure reliable structured output:
 
 | Preset | Pass 1 Tier | Pass 2 Tier | Rationale |
 |--------|-------------|-------------|-----------|
-| `fast` | default (Sonnet) | fast (Haiku) | Critical decisions need better model |
-| `balanced` | heavy (Opus) | default (Sonnet) | Best reasoning for synthesis |
+| `fast` | default (Sonnet) | default (Sonnet) | Ensures reliable structured output |
+| `balanced` | heavy (Opus) | default (Sonnet) | Best reasoning for synthesis, balanced detail |
 | `thorough` | heavy (Opus) | heavy (Opus) | Maximum quality throughout |
 
 #### Sectioned Output Format

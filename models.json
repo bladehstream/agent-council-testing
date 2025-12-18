@@ -96,7 +96,7 @@
         "twoPass": {
           "enabled": true,
           "pass1Tier": "default",
-          "pass2Tier": "fast"
+          "pass2Tier": "default"
         }
       }
     },
