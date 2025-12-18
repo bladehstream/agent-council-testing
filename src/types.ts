@@ -19,7 +19,13 @@ export type AgentState = {
   timeoutHandle?: NodeJS.Timeout;
 };
 
-export type Stage1Result = { agent: string; response: string };
+export type Stage1Result = {
+  agent: string;
+  /** Raw response text from the agent */
+  response: string;
+  /** Executive summary extracted from structured JSON output (if available) */
+  summary?: string;
+};
 export type Stage2Result = { agent: string; rankingRaw: string; parsedRanking: string[] };
 export type Stage3Result = { agent: string; response: string };
 
@@ -72,6 +78,12 @@ export type EnhancedPipelineConfig = {
      * Only one fallback attempt is made.
      */
     fallback?: AgentConfig;
+    /**
+     * Use executive summaries instead of full responses for chairman context.
+     * Significantly reduces context size when Stage 1 responses are large.
+     * Requires Stage 1 agents to output structured JSON with executive_summary field.
+     */
+    useSummaries?: boolean;
   };
 };
 

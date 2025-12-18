@@ -59,35 +59,68 @@ Now provide your evaluation and ranking:
 }
 
 /**
+ * Options for building the chairman prompt.
+ */
+export interface ChairmanPromptOptions {
+  /** Optional output format instructions (e.g., JSON schema) */
+  outputFormat?: string;
+  /** Use executive summaries instead of full responses to reduce context size */
+  useSummaries?: boolean;
+}
+
+/**
  * Build the chairman prompt for Stage 3 synthesis.
  *
  * @param userQuery - The original user question
  * @param stage1Results - Individual agent responses from Stage 1
  * @param stage2Results - Peer rankings from Stage 2
- * @param outputFormat - Optional output format instructions (e.g., JSON schema)
+ * @param options - Chairman prompt options (or outputFormat string for backward compatibility)
  * @returns The complete chairman prompt
  */
 export function buildChairmanPrompt(
   userQuery: string,
   stage1Results: Stage1Result[],
   stage2Results: Stage2Result[],
-  outputFormat?: string
+  options?: ChairmanPromptOptions | string
 ): string {
+  // Handle backward compatibility: string param means outputFormat only
+  const opts: ChairmanPromptOptions = typeof options === 'string'
+    ? { outputFormat: options }
+    : options ?? {};
+
   const stage1Text = stage1Results
-    .map((r) => `Agent: ${r.agent}\nResponse: ${r.response}`)
+    .map((r) => {
+      // Use summary if available and useSummaries is enabled
+      const content = opts.useSummaries && r.summary
+        ? r.summary
+        : r.response;
+      const label = opts.useSummaries && r.summary
+        ? '(Executive Summary)'
+        : '(Full Response)';
+      return `Agent: ${r.agent} ${label}\n${content}`;
+    })
     .join("\n\n");
+
   const stage2Text = stage2Results
     .map((r) => `Agent: ${r.agent}\nRanking: ${r.rankingRaw}`)
     .join("\n\n");
 
   // Build output format section if provided
-  const formatSection = outputFormat
+  const formatSection = opts.outputFormat
     ? `
 
 OUTPUT FORMAT REQUIREMENTS:
-${outputFormat}
+${opts.outputFormat}
 
 You MUST follow the output format exactly as specified above.`
+    : "";
+
+  // Add note about summaries if using them
+  const summaryNote = opts.useSummaries
+    ? `
+Note: You are seeing executive summaries from each agent, not their full responses.
+These summaries capture the key architectural decisions, risks, and recommendations.
+Focus on synthesizing these insights into a cohesive specification.`
     : "";
 
   return `
@@ -101,6 +134,7 @@ ${stage1Text}
 
 STAGE 2 - Peer Rankings:
 ${stage2Text}
+${summaryNote}
 
 Your task as Chairman is to synthesize all of this information into a single,
 comprehensive, accurate answer to the user's original question. Consider:

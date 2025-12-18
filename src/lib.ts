@@ -12,6 +12,7 @@ export {
   pickChairman,
   extractStage1,
   extractStage2,
+  extractSummaryFromResponse,
   calculateAggregateRankings,
   runChairman,
   // Checkpoint functions
@@ -64,6 +65,7 @@ export {
   buildChairmanPrompt,
   parseRankingFromText,
   MAX_HISTORY_ENTRIES,
+  type ChairmanPromptOptions,
 } from './prompts.js';
 
 // Types

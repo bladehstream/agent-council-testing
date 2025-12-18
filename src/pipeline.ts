@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { buildChairmanPrompt, buildRankingPrompt, parseRankingFromText } from "./prompts.js";
+import { buildChairmanPrompt, buildRankingPrompt, parseRankingFromText, type ChairmanPromptOptions } from "./prompts.js";
 import { callAgent, DEFAULT_CHAIRMAN, runAgentsInteractive } from "./agents.js";
 import type {
   AgentConfig,
@@ -177,10 +177,64 @@ export async function runCouncilPipeline(
   return { stage1, stage2, stage3, aggregate };
 }
 
+/**
+ * Extract executive summary from a Stage 1 response.
+ * Tries JSON parsing first, then falls back to markdown header search.
+ */
+export function extractSummaryFromResponse(response: string): string | undefined {
+  // Try 1: Parse as JSON directly
+  try {
+    const parsed = JSON.parse(response);
+    if (parsed.executive_summary && typeof parsed.executive_summary === 'string') {
+      return parsed.executive_summary;
+    }
+  } catch {
+    // Not valid JSON, try other methods
+  }
+
+  // Try 2: Extract JSON from markdown code fences
+  const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[1].trim());
+      if (parsed.executive_summary && typeof parsed.executive_summary === 'string') {
+        return parsed.executive_summary;
+      }
+    } catch {
+      // Code fence content not valid JSON
+    }
+  }
+
+  // Try 3: Look for markdown header format
+  const headerMatch = response.match(
+    /##\s*Executive\s+Summary\s*\n([\s\S]*?)(?=\n##\s|\n---|\n\*\*\*|$)/i
+  );
+  if (headerMatch) {
+    return headerMatch[1].trim();
+  }
+
+  // Try 4: Look for bold label format
+  const boldMatch = response.match(
+    /\*\*Executive\s+Summary[:\*]*\*\*\s*\n?([\s\S]*?)(?=\n\*\*[A-Z]|\n##|\n---|\n\*\*\*|$)/i
+  );
+  if (boldMatch) {
+    return boldMatch[1].trim();
+  }
+
+  return undefined;
+}
+
 export function extractStage1(results: AgentState[]): Stage1Result[] {
   return results
     .filter((r) => r.status === "completed")
-    .map((r) => ({ agent: r.config.name, response: r.stdout.join("").trim() }));
+    .map((r) => {
+      const response = r.stdout.join("").trim();
+      return {
+        agent: r.config.name,
+        response,
+        summary: extractSummaryFromResponse(response),
+      };
+    });
 }
 
 export function extractStage2(results: AgentState[]): Stage2Result[] {
@@ -225,7 +279,7 @@ export function calculateAggregateRankings(stage2: Stage2Result[], labels: Label
  * @param chairman - The chairman agent configuration
  * @param timeoutMs - Optional timeout in milliseconds
  * @param silent - Suppress console output
- * @param outputFormat - Optional output format instructions for structured output
+ * @param options - Chairman prompt options (outputFormat, useSummaries) or outputFormat string for backward compatibility
  * @returns The chairman's synthesized response
  */
 export async function runChairman(
@@ -235,12 +289,12 @@ export async function runChairman(
   chairman: AgentConfig,
   timeoutMs: number | undefined,
   silent: boolean = false,
-  outputFormat?: string
+  options?: ChairmanPromptOptions | string
 ): Promise<Stage3Result> {
   if (!silent) {
     console.log(`\nRunning chairman: ${chairman.name}...`);
   }
-  const prompt = buildChairmanPrompt(userQuery, stage1, stage2, outputFormat);
+  const prompt = buildChairmanPrompt(userQuery, stage1, stage2, options);
   const state: AgentState = {
     config: chairman,
     status: "pending",
@@ -427,6 +481,12 @@ export async function runEnhancedPipeline(
     }
   }
 
+  // Build chairman options
+  const chairmanOptions: ChairmanPromptOptions = {
+    outputFormat: config.stage3.outputFormat,
+    useSummaries: config.stage3.useSummaries,
+  };
+
   // Stage 3: Chairman Synthesis with fallback support
   let stage3 = await runChairman(
     question,
@@ -435,7 +495,7 @@ export async function runEnhancedPipeline(
     config.stage3.chairman,
     timeoutMs,
     silent,
-    config.stage3.outputFormat
+    chairmanOptions
   );
 
   // Try fallback if primary chairman failed and fallback is configured
@@ -450,7 +510,7 @@ export async function runEnhancedPipeline(
       config.stage3.fallback,
       timeoutMs,
       silent,
-      config.stage3.outputFormat
+      chairmanOptions
     );
   }
 
