@@ -53,8 +53,8 @@ This fork adds a **programmatic API** for integration into larger automation wor
 ### From Source
 
 ```bash
-git clone https://github.com/bladehstream/agent-council-testing.git
-cd agent-council-testing
+git clone https://github.com/bladehstream/agent-council.git
+cd agent-council
 npm install
 npm run build
 ```
@@ -644,4 +644,4 @@ MIT
 ## Credits
 
 - Original project: [mylukin/agent-council](https://github.com/mylukin/agent-council)
-- This fork: [bladehstream/agent-council-testing](https://github.com/bladehstream/agent-council-testing)
+- This fork: [bladehstream/agent-council](https://github.com/bladehstream/agent-council)

@@ -26,8 +26,8 @@ npm install agent-council
 
 ### From source
 ```bash
-git clone https://github.com/bladehstream/agent-council-testing.git
-cd agent-council-testing
+git clone https://github.com/bladehstream/agent-council.git
+cd agent-council
 npm install
 npm run build
 ```
@@ -464,4 +464,4 @@ agent-council/
 3. Integrate programmatically using the examples above
 4. Explore stage callbacks for checkpoint/progress needs
 
-For issues and contributions: https://github.com/bladehstream/agent-council-testing
+For issues and contributions: https://github.com/bladehstream/agent-council
