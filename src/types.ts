@@ -51,5 +51,21 @@ export type EnhancedPipelineConfig = {
   stage3: {
     chairman: AgentConfig;
     useReasoning: boolean;
+    /**
+     * Optional output format instructions for the chairman.
+     * When provided, these instructions are appended to the chairman prompt
+     * to enforce structured output (e.g., JSON schema requirements).
+     *
+     * Example:
+     * ```
+     * outputFormat: `Output your response as JSON with this structure:
+     * {
+     *   "summary": "...",
+     *   "recommendations": [...],
+     *   "ambiguities": [...]
+     * }`
+     * ```
+     */
+    outputFormat?: string;
   };
 };

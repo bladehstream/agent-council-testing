@@ -237,6 +237,25 @@ await runTest(test('5.4 buildChairmanPrompt format', async () => {
   assert(result.toLowerCase().includes('chairman'), 'Should reference chairman role');
 }));
 
+await runTest(test('5.4a buildChairmanPrompt with outputFormat', async () => {
+  const stage1 = [{ agent: 'a', response: 'Response A' }];
+  const stage2 = [{ agent: 'a', rankingRaw: 'A > B', parsedRanking: ['A', 'B'] }];
+  const outputFormat = 'Output as JSON: {"summary": "...", "items": [...]}';
+  const result = lib.buildChairmanPrompt('Test query', stage1, stage2, outputFormat);
+  assert(typeof result === 'string', 'Should return string');
+  assert(result.includes('OUTPUT FORMAT REQUIREMENTS'), 'Should include format requirements header');
+  assert(result.includes('Output as JSON'), 'Should include the outputFormat content');
+  assert(result.includes('MUST follow'), 'Should include enforcement instruction');
+}));
+
+await runTest(test('5.4b buildChairmanPrompt without outputFormat (backward compatible)', async () => {
+  const stage1 = [{ agent: 'a', response: 'Response A' }];
+  const stage2 = [{ agent: 'a', rankingRaw: 'A > B', parsedRanking: ['A', 'B'] }];
+  const result = lib.buildChairmanPrompt('Test query', stage1, stage2);
+  assert(!result.includes('OUTPUT FORMAT REQUIREMENTS'), 'Should not include format section without outputFormat');
+  assert(!result.includes('MUST follow'), 'Should not include enforcement without outputFormat');
+}));
+
 await runTest(test('5.5 parseRankingFromText parses valid input', async () => {
   const input = 'Analysis...\n\nFINAL RANKING:\n1. Response A\n2. Response B\n3. Response C';
   const result = lib.parseRankingFromText(input);

@@ -236,6 +236,39 @@ if (result2) {
   console.log('Final answer:', result2.stage3.response);
   console.log('Top ranked:', result2.aggregate[0]?.agent);
 }
+
+// Option 3: Structured output with outputFormat
+const structuredConfig = {
+  stage1: { agents: [createAgentFromSpec('claude:default'), createAgentFromSpec('gemini:default')] },
+  stage2: { agents: [createAgentFromSpec('claude:default'), createAgentFromSpec('gemini:default')] },
+  stage3: {
+    chairman: createAgentFromSpec('claude:heavy'),
+    useReasoning: true,
+    outputFormat: `Output your response as a JSON object with this exact structure:
+{
+  "summary": "Executive summary of the council's recommendation",
+  "recommendations": ["Recommendation 1", "Recommendation 2"],
+  "ambiguities": [
+    {"question": "Open question needing resolution", "options": ["Option A", "Option B"]}
+  ],
+  "confidence": "high" | "medium" | "low"
+}
+Output ONLY the JSON object, no markdown code fences or additional text.`,
+  },
+};
+
+const result3 = await runEnhancedPipeline("Design a caching strategy", {
+  config: structuredConfig,
+  tty: false,
+  silent: true,
+});
+
+if (result3) {
+  // Parse the structured response
+  const structured = JSON.parse(result3.stage3.response);
+  console.log('Summary:', structured.summary);
+  console.log('Open questions:', structured.ambiguities.length);
+}
 ```
 
 ## Programmatic API
@@ -250,7 +283,7 @@ pickChairman(agents, preferredName?)
 extractStage1(agentStates)
 extractStage2(agentStates)
 calculateAggregateRankings(stage2Results, labelMap)
-runChairman(query, stage1, stage2, chairman, timeoutMs, silent?)
+runChairman(query, stage1, stage2, chairman, timeoutMs, silent?, outputFormat?)
 
 // Model Configuration
 loadModelsConfig()              // Load models.json
@@ -271,7 +304,7 @@ DEFAULT_CHAIRMAN
 // Prompts
 buildQuestionWithHistory(question, history)
 buildRankingPrompt(query, stage1Results)
-buildChairmanPrompt(query, stage1, stage2)
+buildChairmanPrompt(query, stage1, stage2, outputFormat?)  // outputFormat for structured output
 parseRankingFromText(text)
 MAX_HISTORY_ENTRIES
 
@@ -393,6 +426,78 @@ const result2 = await runEnhancedPipeline("Complex question", {
   silent: true,
 });
 ```
+
+### Structured Output (outputFormat)
+
+The `outputFormat` option allows you to enforce structured output from the chairman, such as JSON. This is useful for programmatic consumption of council results.
+
+```typescript
+import { runEnhancedPipeline, createAgentFromSpec } from 'agent-council';
+
+// Define the output format as a string with instructions
+const outputFormat = `Output your response as a JSON object with this exact structure:
+
+{
+  "executive_summary": "1-2 paragraph synthesis",
+  "recommendations": [
+    {"title": "Recommendation title", "description": "Details", "priority": "high|medium|low"}
+  ],
+  "ambiguities": [
+    {"id": "AMB-1", "question": "Question needing decision", "options": ["A", "B"], "recommendation": "Suggested choice"}
+  ],
+  "spec_sections": {
+    "architecture": "Architecture details as markdown",
+    "data_model": "Data model details",
+    "api_contracts": "API specifications",
+    "security": "Security considerations"
+  }
+}
+
+IMPORTANT:
+- Output ONLY the JSON object, no markdown code fences
+- All fields are required
+- Every identified ambiguity MUST appear in the ambiguities array`;
+
+const config = {
+  stage1: {
+    agents: [
+      createAgentFromSpec('claude:heavy'),
+      createAgentFromSpec('gemini:heavy'),
+      createAgentFromSpec('codex:heavy'),
+    ],
+  },
+  stage2: {
+    agents: [
+      createAgentFromSpec('claude:default'),
+      createAgentFromSpec('gemini:default'),
+    ],
+  },
+  stage3: {
+    chairman: createAgentFromSpec('claude:heavy'),
+    useReasoning: true,
+    outputFormat,  // <-- Structured output instructions
+  },
+};
+
+const result = await runEnhancedPipeline(prompt, {
+  config,
+  tty: false,
+  silent: true,
+});
+
+if (result) {
+  // Parse the structured JSON response
+  const structured = JSON.parse(result.stage3.response);
+  console.log('Ambiguities to resolve:', structured.ambiguities.length);
+  console.log('Architecture:', structured.spec_sections.architecture);
+}
+```
+
+**Benefits of structured output:**
+- Reliable parsing - no regex extraction from free-form text
+- Forced completeness - schema requires all fields
+- Direct integration - JSON can be used directly in downstream systems
+- Validation - output can be validated against a JSON schema
 
 ### Custom Agents
 

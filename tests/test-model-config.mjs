@@ -693,6 +693,30 @@ await runTest('8.5 chairman is AgentConfig object', async () => {
   assert(Array.isArray(config.stage3.chairman.command), 'Command should be array');
 });
 
+await runTest('8.6 stage3.outputFormat can be set for structured output', async () => {
+  const config = {
+    stage1: { agents: [{ name: 'test', command: ['echo'] }] },
+    stage2: { agents: [{ name: 'test', command: ['echo'] }] },
+    stage3: {
+      chairman: { name: 'chairman', command: ['echo'] },
+      useReasoning: false,
+      outputFormat: 'Output as JSON: {"key": "value"}',
+    },
+  };
+
+  assert(config.stage3.outputFormat, 'outputFormat should be settable');
+  assertType(config.stage3.outputFormat, 'string', 'outputFormat should be string');
+  assert(config.stage3.outputFormat.includes('JSON'), 'outputFormat should contain instructions');
+});
+
+await runTest('8.7 stage3.outputFormat is optional (backward compatible)', async () => {
+  const preset = getPreset('fast');
+  const config = buildPipelineConfig(preset, ['claude']);
+
+  // outputFormat should be undefined by default (not set by buildPipelineConfig)
+  assert(config.stage3.outputFormat === undefined, 'outputFormat should be undefined by default');
+});
+
 // ============================================================================
 // Category 9: Edge Cases and Error Handling
 // ============================================================================

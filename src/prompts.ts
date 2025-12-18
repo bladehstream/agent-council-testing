@@ -58,10 +58,20 @@ Now provide your evaluation and ranking:
 `.trim();
 }
 
+/**
+ * Build the chairman prompt for Stage 3 synthesis.
+ *
+ * @param userQuery - The original user question
+ * @param stage1Results - Individual agent responses from Stage 1
+ * @param stage2Results - Peer rankings from Stage 2
+ * @param outputFormat - Optional output format instructions (e.g., JSON schema)
+ * @returns The complete chairman prompt
+ */
 export function buildChairmanPrompt(
   userQuery: string,
   stage1Results: Stage1Result[],
-  stage2Results: Stage2Result[]
+  stage2Results: Stage2Result[],
+  outputFormat?: string
 ): string {
   const stage1Text = stage1Results
     .map((r) => `Agent: ${r.agent}\nResponse: ${r.response}`)
@@ -69,6 +79,16 @@ export function buildChairmanPrompt(
   const stage2Text = stage2Results
     .map((r) => `Agent: ${r.agent}\nRanking: ${r.rankingRaw}`)
     .join("\n\n");
+
+  // Build output format section if provided
+  const formatSection = outputFormat
+    ? `
+
+OUTPUT FORMAT REQUIREMENTS:
+${outputFormat}
+
+You MUST follow the output format exactly as specified above.`
+    : "";
 
   return `
 You are the Chairman of an agent council. Multiple AI agents have provided responses
@@ -87,8 +107,9 @@ comprehensive, accurate answer to the user's original question. Consider:
 - The individual responses and their insights
 - The peer rankings and what they reveal about response quality
 - Patterns of agreement or disagreement
+${formatSection}
 
-Provide a clear, well-reasoned final answer that represents the council's collective wisdom:
+Provide your synthesis:
 `.trim();
 }
 

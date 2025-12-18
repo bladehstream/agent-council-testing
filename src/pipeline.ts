@@ -137,18 +137,31 @@ export function calculateAggregateRankings(stage2: Stage2Result[], labels: Label
     .sort((a, b) => a.averageRank - b.averageRank);
 }
 
+/**
+ * Run the chairman synthesis stage.
+ *
+ * @param userQuery - The original user question
+ * @param stage1 - Individual agent responses from Stage 1
+ * @param stage2 - Peer rankings from Stage 2
+ * @param chairman - The chairman agent configuration
+ * @param timeoutMs - Optional timeout in milliseconds
+ * @param silent - Suppress console output
+ * @param outputFormat - Optional output format instructions for structured output
+ * @returns The chairman's synthesized response
+ */
 export async function runChairman(
   userQuery: string,
   stage1: Stage1Result[],
   stage2: Stage2Result[],
   chairman: AgentConfig,
   timeoutMs: number | undefined,
-  silent: boolean = false
+  silent: boolean = false,
+  outputFormat?: string
 ): Promise<Stage3Result> {
   if (!silent) {
     console.log(`\nRunning chairman: ${chairman.name}...`);
   }
-  const prompt = buildChairmanPrompt(userQuery, stage1, stage2);
+  const prompt = buildChairmanPrompt(userQuery, stage1, stage2, outputFormat);
   const state: AgentState = {
     config: chairman,
     status: "pending",
@@ -268,7 +281,8 @@ export async function runEnhancedPipeline(
     stage2,
     config.stage3.chairman,
     timeoutMs,
-    silent
+    silent,
+    config.stage3.outputFormat
   );
 
   // Stage 3 callback
