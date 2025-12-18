@@ -51,6 +51,70 @@ export type StageAgentConfig = {
   agents: AgentConfig[];
 };
 
+/**
+ * Two-pass chairman configuration for reliable large output generation.
+ *
+ * Pass 1 (Synthesis): Produces executive summary, ambiguities, consensus notes,
+ * implementation phases, and section outlines.
+ *
+ * Pass 2 (Detail): Expands section outlines into full detailed specifications.
+ *
+ * Both passes use sectioned delimiters for robust parsing and truncation recovery.
+ */
+export type TwoPassConfig = {
+  /**
+   * Enable two-pass chairman output.
+   * When enabled, the chairman runs twice: first for synthesis, then for details.
+   */
+  enabled: boolean;
+  /**
+   * Model tier for Pass 1 (synthesis).
+   * If not specified, uses the chairman's configured tier.
+   */
+  pass1Tier?: ModelTier;
+  /**
+   * Model tier for Pass 2 (detailed specifications).
+   * If not specified, uses N-1 tier from pass1Tier (fast stays fast).
+   */
+  pass2Tier?: ModelTier;
+  /**
+   * Output format instructions for Pass 1.
+   * Should request synthesis-level output: summary, ambiguities, phases, outlines.
+   */
+  pass1Format?: string;
+  /**
+   * Output format instructions for Pass 2.
+   * Should request detailed spec sections, with Pass 1 output as context.
+   */
+  pass2Format?: string;
+};
+
+/**
+ * Result from a two-pass chairman execution.
+ */
+export type TwoPassResult = {
+  /** Pass 1 output (synthesis) */
+  pass1: Stage3Result;
+  /** Pass 2 output (detailed specifications) */
+  pass2: Stage3Result;
+  /** Combined/merged output if applicable */
+  combined?: string;
+  /** Which sections were successfully parsed from each pass */
+  parsedSections: {
+    pass1: string[];
+    pass2: string[];
+  };
+};
+
+/**
+ * Parsed section from sectioned output format.
+ */
+export type ParsedSection = {
+  name: string;
+  content: string;
+  complete: boolean;
+};
+
 export type EnhancedPipelineConfig = {
   stage1: StageAgentConfig;
   stage2: StageAgentConfig;
@@ -71,6 +135,8 @@ export type EnhancedPipelineConfig = {
      *   "ambiguities": [...]
      * }`
      * ```
+     *
+     * Note: When twoPass is enabled, use twoPass.pass1Format and pass2Format instead.
      */
     outputFormat?: string;
     /**
@@ -84,6 +150,15 @@ export type EnhancedPipelineConfig = {
      * Requires Stage 1 agents to output structured JSON with executive_summary field.
      */
     useSummaries?: boolean;
+    /**
+     * Two-pass chairman configuration for reliable large output generation.
+     * When enabled, splits chairman synthesis into two sequential passes:
+     * - Pass 1: Synthesis (summary, ambiguities, phases, outlines)
+     * - Pass 2: Detail (full spec sections)
+     *
+     * This improves reliability by keeping each pass within output token limits.
+     */
+    twoPass?: TwoPassConfig;
   };
 };
 

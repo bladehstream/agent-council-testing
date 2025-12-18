@@ -90,19 +90,44 @@
       "description": "Optimize for speed and cost",
       "stage1": { "tier": "fast", "count": 3 },
       "stage2": { "tier": "fast", "count": 3 },
-      "stage3": { "tier": "default", "count": 1 }
+      "stage3": {
+        "tier": "default",
+        "count": 1,
+        "twoPass": {
+          "enabled": true,
+          "pass1Tier": "default",
+          "pass2Tier": "fast"
+        }
+      }
     },
     "balanced": {
       "description": "Balance of speed and quality",
       "stage1": { "tier": "default", "count": 3 },
       "stage2": { "tier": "default", "count": 3 },
-      "stage3": { "tier": "heavy", "count": 1 }
+      "stage3": {
+        "tier": "heavy",
+        "count": 1,
+        "twoPass": {
+          "enabled": true,
+          "pass1Tier": "heavy",
+          "pass2Tier": "default"
+        }
+      }
     },
     "thorough": {
       "description": "Maximum quality and reasoning depth",
       "stage1": { "tier": "heavy", "count": 3 },
       "stage2": { "tier": "heavy", "count": 6 },
-      "stage3": { "tier": "heavy", "count": 1, "reasoning": true }
+      "stage3": {
+        "tier": "heavy",
+        "count": 1,
+        "reasoning": true,
+        "twoPass": {
+          "enabled": true,
+          "pass1Tier": "heavy",
+          "pass2Tier": "heavy"
+        }
+      }
     }
   },
   "defaults": {

@@ -9,6 +9,8 @@ This fork adds a **programmatic API** for integration into larger automation wor
 - **Multi-Agent Consensus**: Combines responses from multiple AI models for more reliable answers
 - **Peer Validation**: Agents anonymously rank each other's responses to surface quality
 - **Chairman Synthesis**: A designated agent synthesizes the final answer from all inputs
+- **Two-Pass Chairman**: Split large outputs into synthesis + detail passes for reliability (see [Two-Pass Chairman](#two-pass-chairman-synthesis))
+- **Sectioned Output**: Robust parsing with explicit delimiters and truncation detection
 - **Granular Model Selection**: Choose model tiers (fast/default/heavy) per stage
 - **Presets**: Built-in configurations (fast, balanced, thorough) for common use cases
 - **Per-Stage Configuration**: Different agents and counts for each pipeline stage
@@ -161,11 +163,13 @@ Fine-tune which models run at each stage:
 
 ### Presets Reference
 
-| Preset | Stage 1 | Stage 2 | Chairman | Use Case |
-|--------|---------|---------|----------|----------|
-| `fast` | 3x fast | 3x fast | default | Quick answers, cost-sensitive |
-| `balanced` | 3x default | 3x default | heavy | General purpose |
-| `thorough` | 3x heavy | 6x heavy | heavy | Complex problems, critical decisions |
+| Preset | Stage 1 | Stage 2 | Chairman (Pass 1 / Pass 2) | Use Case |
+|--------|---------|---------|----------------------------|----------|
+| `fast` | 3x fast | 3x fast | default / fast | Quick answers, cost-sensitive |
+| `balanced` | 3x default | 3x default | heavy / default | General purpose |
+| `thorough` | 3x heavy | 6x heavy | heavy / heavy | Complex problems, critical decisions |
+
+All presets use **two-pass chairman synthesis** by default for improved reliability. See [Two-Pass Chairman](#two-pass-chairman-synthesis) below.
 
 ### Other CLI Options
 
@@ -279,6 +283,7 @@ if (result3) {
 // Pipeline
 runCouncilPipeline(question, agents, chairman, options)
 runEnhancedPipeline(question, options)  // Per-stage configuration
+runTwoPassChairman(query, stage1, stage2, chairman, twoPass, timeoutMs, silent?, options?)
 pickChairman(agents, preferredName?)
 extractStage1(agentStates)
 extractStage2(agentStates)
@@ -290,6 +295,8 @@ loadModelsConfig()              // Load models.json
 refreshModelsConfig()           // Refresh from package defaults
 createAgentConfig(provider, tier)
 createAgentFromSpec(spec)       // e.g., "claude:heavy"
+createAgentWithTier(agent, tier) // Create agent with different tier
+getStepDownTier(tier)           // Get N-1 tier (heavy→default→fast)
 getPreset(name)                 // Get preset configuration
 listPresets()                   // List available presets
 buildPipelineConfig(preset, providers)
@@ -304,15 +311,23 @@ DEFAULT_CHAIRMAN
 // Prompts
 buildQuestionWithHistory(question, history)
 buildRankingPrompt(query, stage1Results)
-buildChairmanPrompt(query, stage1, stage2, outputFormat?)  // outputFormat for structured output
+buildChairmanPrompt(query, stage1, stage2, outputFormat?)
+buildPass1Prompt(query, stage1, stage2, options?)  // Two-pass: synthesis
+buildPass2Prompt(query, pass1Output, stage1, options?)  // Two-pass: detail
+buildSectionedFormatInstructions(sections, descriptions?)
+parseSectionedOutput(output)  // Parse sectioned output
+getMissingSections(parsed, expected)
+getTruncatedSections(parsed)
 parseRankingFromText(text)
 MAX_HISTORY_ENTRIES
+SECTION_DELIMITERS, PASS1_SECTIONS, PASS2_SECTIONS
 
 // Types
 AgentConfig, AgentState, AgentStatus
 Stage1Result, Stage2Result, Stage3Result
 PipelineResult, PipelineOptions, PipelineCallbacks
 EnhancedPipelineOptions, EnhancedPipelineConfig
+TwoPassConfig, TwoPassResult, ParsedSection  // Two-pass types
 ModelsConfig, PresetConfig, ModelTier
 FilterResult, ConversationEntry, SessionState
 ```
@@ -498,6 +513,160 @@ if (result) {
 - Forced completeness - schema requires all fields
 - Direct integration - JSON can be used directly in downstream systems
 - Validation - output can be validated against a JSON schema
+
+### Two-Pass Chairman Synthesis
+
+A key differentiator of agent-council is the **two-pass chairman synthesis** feature, designed to handle large output generation reliably. This addresses a common limitation where LLM outputs get truncated when generating comprehensive specifications or detailed analyses.
+
+#### The Problem
+
+When generating large structured outputs (e.g., 50KB+ technical specifications), single-pass synthesis often fails due to:
+- Output token limits (typically 4K-16K tokens per response)
+- Truncation at the end of the response (missing closing braces, incomplete sections)
+- Lost critical information when truncation occurs mid-content
+
+#### The Solution: Two Sequential Passes
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    TWO-PASS CHAIRMAN SYNTHESIS                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Pass 1: Synthesis (Higher-tier model)                          │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  • Executive summary                                     │   │
+│  │  • All ambiguities requiring human decision              │   │
+│  │  • Consensus notes (where agents agreed/disagreed)       │   │
+│  │  • Implementation phases                                 │   │
+│  │  • Section outlines for Pass 2                          │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│                              ▼                                   │
+│  Pass 2: Detailed Specifications (Lower-tier model)             │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  • Architecture details                                  │   │
+│  │  • Data model specifications                             │   │
+│  │  • API contracts                                         │   │
+│  │  • User flows                                            │   │
+│  │  • Security design                                       │   │
+│  │  • Deployment recommendations                            │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Tier Progression
+
+Pass 2 uses a lower model tier than Pass 1 (N-1), since the critical thinking is done in Pass 1:
+
+| Preset | Pass 1 Tier | Pass 2 Tier | Rationale |
+|--------|-------------|-------------|-----------|
+| `fast` | default (Sonnet) | fast (Haiku) | Critical decisions need better model |
+| `balanced` | heavy (Opus) | default (Sonnet) | Best reasoning for synthesis |
+| `thorough` | heavy (Opus) | heavy (Opus) | Maximum quality throughout |
+
+#### Sectioned Output Format
+
+Both passes use explicit delimiters for robust parsing and truncation detection:
+
+```
+===SECTION:executive_summary===
+Content here...
+===END:executive_summary===
+
+===SECTION:ambiguities===
+[{"id": "AMB-1", "question": "...", ...}]
+===END:ambiguities===
+```
+
+Benefits:
+- **Truncation detection**: Missing `===END:section===` indicates truncated content
+- **Incremental parsing**: Each section can be parsed independently
+- **Priority ordering**: Most critical sections (ambiguities) come first
+
+#### Programmatic Usage
+
+```typescript
+import { runEnhancedPipeline, createAgentFromSpec } from 'agent-council';
+
+const config = {
+  stage1: {
+    agents: [
+      createAgentFromSpec('claude:default'),
+      createAgentFromSpec('gemini:default'),
+    ],
+  },
+  stage2: {
+    agents: [
+      createAgentFromSpec('claude:default'),
+      createAgentFromSpec('gemini:default'),
+    ],
+  },
+  stage3: {
+    chairman: createAgentFromSpec('claude:heavy'),
+    useReasoning: false,
+    useSummaries: true, // Use executive summaries to reduce input context
+    twoPass: {
+      enabled: true,
+      pass1Tier: 'heavy',   // Synthesis with best model
+      pass2Tier: 'default', // Details with balanced model
+      // Optional: custom prompts for each pass
+      // pass1Format: '...',
+      // pass2Format: '...',
+    },
+  },
+};
+
+const result = await runEnhancedPipeline("Design a real-time analytics system", {
+  config,
+  tty: false,
+  silent: false, // See pass progress
+});
+
+if (result) {
+  // The combined output includes all sections from both passes
+  console.log('Chairman:', result.stage3.agent); // "claude:heavy + claude:default"
+
+  // Parse sections using the exported helpers
+  import { parseSectionedOutput, PASS1_SECTIONS, PASS2_SECTIONS } from 'agent-council';
+
+  const sections = parseSectionedOutput(result.stage3.response);
+  const ambiguities = sections.find(s => s.name === 'ambiguities');
+  if (ambiguities?.complete) {
+    const parsed = JSON.parse(ambiguities.content);
+    console.log(`Found ${parsed.length} ambiguities to resolve`);
+  }
+}
+```
+
+#### When to Use Two-Pass
+
+**Recommended for:**
+- Specification generation (technical specs, PRDs, architecture docs)
+- Complex analysis with multiple output sections
+- Any task producing >20KB of structured output
+- Workflows requiring reliable JSON parsing
+
+**Not needed for:**
+- Simple Q&A
+- Short summaries
+- Single-section outputs
+
+#### Disabling Two-Pass
+
+For simple use cases, disable two-pass to use single-pass chairman:
+
+```typescript
+const config = {
+  // ... stage1, stage2 ...
+  stage3: {
+    chairman: createAgentFromSpec('claude:heavy'),
+    useReasoning: false,
+    twoPass: { enabled: false }, // Single-pass mode
+    outputFormat: 'Your custom format instructions...',
+  },
+};
+```
 
 ### Custom Agents
 

@@ -1,8 +1,19 @@
 import chalk from "chalk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { buildChairmanPrompt, buildRankingPrompt, parseRankingFromText, type ChairmanPromptOptions } from "./prompts.js";
+import {
+  buildChairmanPrompt,
+  buildPass1Prompt,
+  buildPass2Prompt,
+  buildRankingPrompt,
+  parseRankingFromText,
+  parseSectionedOutput,
+  PASS1_SECTIONS,
+  PASS2_SECTIONS,
+  type ChairmanPromptOptions,
+} from "./prompts.js";
 import { callAgent, DEFAULT_CHAIRMAN, runAgentsInteractive } from "./agents.js";
+import { createAgentWithTier, getStepDownTier, parseAgentSpec } from "./model-config.js";
 import type {
   AgentConfig,
   AgentState,
@@ -10,9 +21,13 @@ import type {
   CheckpointOptions,
   EnhancedPipelineConfig,
   LabelMap,
+  ModelTier,
+  ParsedSection,
   Stage1Result,
   Stage2Result,
   Stage3Result,
+  TwoPassConfig,
+  TwoPassResult,
 } from "./types.js";
 
 export type AggregateRanking = { agent: string; averageRank: number; rankingsCount: number };
@@ -315,6 +330,188 @@ export function pickChairman(agents: AgentConfig[], chairmanName?: string): Agen
   );
 }
 
+// ============================================================================
+// Two-Pass Chairman
+// ============================================================================
+
+/**
+ * Determine the tier for Pass 2 based on configuration.
+ * If pass2Tier is specified, use it. Otherwise, step down from pass1Tier.
+ * Exception: if pass1Tier is "heavy" and pass2Tier is not specified, check the preset.
+ */
+function resolvePass2Tier(twoPass: TwoPassConfig, chairmanTier: ModelTier): ModelTier {
+  if (twoPass.pass2Tier) {
+    return twoPass.pass2Tier;
+  }
+  const pass1Tier = twoPass.pass1Tier ?? chairmanTier;
+  return getStepDownTier(pass1Tier);
+}
+
+/**
+ * Run the two-pass chairman synthesis.
+ *
+ * Pass 1 (Synthesis): Produces executive summary, ambiguities, consensus notes,
+ * implementation phases, and section outlines.
+ *
+ * Pass 2 (Detail): Expands section outlines into full detailed specifications.
+ *
+ * @param userQuery - The original user question
+ * @param stage1 - Individual agent responses from Stage 1
+ * @param stage2 - Peer rankings from Stage 2
+ * @param chairman - The chairman agent configuration
+ * @param twoPass - Two-pass configuration
+ * @param timeoutMs - Optional timeout in milliseconds
+ * @param silent - Suppress console output
+ * @param promptOptions - Chairman prompt options (useSummaries)
+ * @returns TwoPassResult with outputs from both passes
+ */
+export async function runTwoPassChairman(
+  userQuery: string,
+  stage1: Stage1Result[],
+  stage2: Stage2Result[],
+  chairman: AgentConfig,
+  twoPass: TwoPassConfig,
+  timeoutMs: number | undefined,
+  silent: boolean = false,
+  promptOptions?: ChairmanPromptOptions
+): Promise<TwoPassResult> {
+  // Determine tiers for each pass
+  const { tier: chairmanTier } = parseAgentSpec(chairman.name);
+  const pass1Tier = twoPass.pass1Tier ?? chairmanTier;
+  const pass2Tier = resolvePass2Tier(twoPass, chairmanTier);
+
+  // Create agents for each pass (may be same or different based on tiers)
+  const pass1Agent = pass1Tier === chairmanTier
+    ? chairman
+    : createAgentWithTier(chairman, pass1Tier);
+  const pass2Agent = pass2Tier === chairmanTier
+    ? chairman
+    : createAgentWithTier(chairman, pass2Tier);
+
+  if (!silent) {
+    console.log(`\nRunning two-pass chairman synthesis...`);
+    console.log(`  Pass 1 (${pass1Agent.name}): Synthesis`);
+    console.log(`  Pass 2 (${pass2Agent.name}): Detailed specifications`);
+  }
+
+  // === PASS 1: Synthesis ===
+  if (!silent) {
+    console.log(`\n  [Pass 1] Running synthesis with ${pass1Agent.name}...`);
+  }
+
+  const pass1Prompt = twoPass.pass1Format
+    ? buildChairmanPrompt(userQuery, stage1, stage2, { ...promptOptions, outputFormat: twoPass.pass1Format })
+    : buildPass1Prompt(userQuery, stage1, stage2, promptOptions);
+
+  const pass1State: AgentState = {
+    config: pass1Agent,
+    status: "pending",
+    stdout: [],
+    stderr: [],
+  };
+
+  const pass1Result = await callAgent(pass1State, pass1Prompt, timeoutMs);
+  const pass1Response = pass1Result.status === "completed"
+    ? pass1Result.stdout.join("").trim()
+    : `Error from chairman pass 1 (${pass1Result.status})`;
+
+  // Parse Pass 1 sections
+  const pass1Sections = parseSectionedOutput(pass1Response);
+  const pass1SectionNames = pass1Sections.filter(s => s.complete).map(s => s.name);
+
+  if (!silent) {
+    console.log(`  [Pass 1] Complete. Parsed ${pass1SectionNames.length}/${PASS1_SECTIONS.length} sections.`);
+    if (pass1SectionNames.length < PASS1_SECTIONS.length) {
+      const missing = PASS1_SECTIONS.filter(s => !pass1SectionNames.includes(s));
+      console.log(chalk.yellow(`  [Pass 1] Missing sections: ${missing.join(", ")}`));
+    }
+  }
+
+  // Check for Pass 1 failure
+  if (pass1Response.startsWith("Error from chairman")) {
+    return {
+      pass1: { agent: pass1Agent.name, response: pass1Response },
+      pass2: { agent: pass2Agent.name, response: "" },
+      parsedSections: { pass1: [], pass2: [] },
+    };
+  }
+
+  // === PASS 2: Detailed Specifications ===
+  if (!silent) {
+    console.log(`\n  [Pass 2] Running detailed specifications with ${pass2Agent.name}...`);
+  }
+
+  const pass2Prompt = twoPass.pass2Format
+    ? buildChairmanPrompt(userQuery, stage1, stage2, { ...promptOptions, outputFormat: twoPass.pass2Format })
+    : buildPass2Prompt(userQuery, pass1Response, stage1, promptOptions);
+
+  const pass2State: AgentState = {
+    config: pass2Agent,
+    status: "pending",
+    stdout: [],
+    stderr: [],
+  };
+
+  const pass2Result = await callAgent(pass2State, pass2Prompt, timeoutMs);
+  const pass2Response = pass2Result.status === "completed"
+    ? pass2Result.stdout.join("").trim()
+    : `Error from chairman pass 2 (${pass2Result.status})`;
+
+  // Parse Pass 2 sections
+  const pass2Sections = parseSectionedOutput(pass2Response);
+  const pass2SectionNames = pass2Sections.filter(s => s.complete).map(s => s.name);
+
+  if (!silent) {
+    console.log(`  [Pass 2] Complete. Parsed ${pass2SectionNames.length}/${PASS2_SECTIONS.length} sections.`);
+    if (pass2SectionNames.length < PASS2_SECTIONS.length) {
+      const missing = PASS2_SECTIONS.filter(s => !pass2SectionNames.includes(s));
+      console.log(chalk.yellow(`  [Pass 2] Missing sections: ${missing.join(", ")}`));
+    }
+  }
+
+  // Combine outputs
+  const combined = combinePassOutputs(pass1Response, pass2Response, pass1Sections, pass2Sections);
+
+  return {
+    pass1: { agent: pass1Agent.name, response: pass1Response },
+    pass2: { agent: pass2Agent.name, response: pass2Response },
+    combined,
+    parsedSections: {
+      pass1: pass1SectionNames,
+      pass2: pass2SectionNames,
+    },
+  };
+}
+
+/**
+ * Combine Pass 1 and Pass 2 outputs into a single response.
+ * Uses the sectioned format for easy downstream parsing.
+ */
+function combinePassOutputs(
+  pass1Raw: string,
+  pass2Raw: string,
+  pass1Sections: ParsedSection[],
+  pass2Sections: ParsedSection[]
+): string {
+  const allSections: string[] = [];
+
+  // Add Pass 1 sections
+  for (const section of pass1Sections) {
+    if (section.complete) {
+      allSections.push(`===SECTION:${section.name}===\n${section.content}\n===END:${section.name}===`);
+    }
+  }
+
+  // Add Pass 2 sections
+  for (const section of pass2Sections) {
+    if (section.complete) {
+      allSections.push(`===SECTION:${section.name}===\n${section.content}\n===END:${section.name}===`);
+    }
+  }
+
+  return allSections.join("\n\n");
+}
+
 export function printFinal(
   stage1: Stage1Result[],
   stage2: Stage2Result[],
@@ -487,31 +684,79 @@ export async function runEnhancedPipeline(
     useSummaries: config.stage3.useSummaries,
   };
 
-  // Stage 3: Chairman Synthesis with fallback support
-  let stage3 = await runChairman(
-    question,
-    stage1!,
-    stage2!,
-    config.stage3.chairman,
-    timeoutMs,
-    silent,
-    chairmanOptions
-  );
+  let stage3: Stage3Result;
+  let twoPassResult: TwoPassResult | undefined;
 
-  // Try fallback if primary chairman failed and fallback is configured
-  if (isChairmanFailure(stage3.response) && config.stage3.fallback) {
-    if (!silent) {
-      console.log(chalk.yellow(`\nPrimary chairman (${config.stage3.chairman.name}) failed, trying fallback (${config.stage3.fallback.name})...`));
-    }
-    stage3 = await runChairman(
+  // Stage 3: Chairman Synthesis
+  // Use two-pass if configured, otherwise single pass
+  if (config.stage3.twoPass?.enabled) {
+    // Two-pass chairman mode
+    twoPassResult = await runTwoPassChairman(
       question,
       stage1!,
       stage2!,
-      config.stage3.fallback,
+      config.stage3.chairman,
+      config.stage3.twoPass,
       timeoutMs,
       silent,
       chairmanOptions
     );
+
+    // Use combined output as the stage3 response
+    stage3 = {
+      agent: `${twoPassResult.pass1.agent} + ${twoPassResult.pass2.agent}`,
+      response: twoPassResult.combined || twoPassResult.pass1.response + "\n\n" + twoPassResult.pass2.response,
+    };
+
+    // Check for failure and try fallback
+    const pass1Failed = isChairmanFailure(twoPassResult.pass1.response);
+    if (pass1Failed && config.stage3.fallback) {
+      if (!silent) {
+        console.log(chalk.yellow(`\nPrimary chairman (${config.stage3.chairman.name}) failed in two-pass mode, trying fallback (${config.stage3.fallback.name})...`));
+      }
+      // Run two-pass with fallback chairman
+      twoPassResult = await runTwoPassChairman(
+        question,
+        stage1!,
+        stage2!,
+        config.stage3.fallback,
+        config.stage3.twoPass,
+        timeoutMs,
+        silent,
+        chairmanOptions
+      );
+      stage3 = {
+        agent: `${twoPassResult.pass1.agent} + ${twoPassResult.pass2.agent}`,
+        response: twoPassResult.combined || twoPassResult.pass1.response + "\n\n" + twoPassResult.pass2.response,
+      };
+    }
+  } else {
+    // Single-pass chairman mode (original behavior)
+    stage3 = await runChairman(
+      question,
+      stage1!,
+      stage2!,
+      config.stage3.chairman,
+      timeoutMs,
+      silent,
+      chairmanOptions
+    );
+
+    // Try fallback if primary chairman failed and fallback is configured
+    if (isChairmanFailure(stage3.response) && config.stage3.fallback) {
+      if (!silent) {
+        console.log(chalk.yellow(`\nPrimary chairman (${config.stage3.chairman.name}) failed, trying fallback (${config.stage3.fallback.name})...`));
+      }
+      stage3 = await runChairman(
+        question,
+        stage1!,
+        stage2!,
+        config.stage3.fallback,
+        timeoutMs,
+        silent,
+        chairmanOptions
+      );
+    }
   }
 
   // Stage 3 callback

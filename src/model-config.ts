@@ -294,6 +294,44 @@ export function parseAgentSpec(spec: string): { provider: string; tier: ModelTie
   return { provider, tier };
 }
 
+/**
+ * Get the tier one level below the given tier (N-1).
+ * Used for two-pass chairman where Pass 2 uses a lower tier.
+ *
+ * Tier progression: heavy → default → fast → fast (floor)
+ *
+ * @param tier The current tier
+ * @returns The tier one level below, or same tier if already at lowest
+ */
+export function getStepDownTier(tier: ModelTier): ModelTier {
+  switch (tier) {
+    case "heavy":
+      return "default";
+    case "default":
+      return "fast";
+    case "fast":
+      return "fast"; // Floor - can't go lower
+  }
+}
+
+/**
+ * Create a new AgentConfig with a different tier but same provider.
+ *
+ * @param agent The original agent config
+ * @param newTier The tier to use
+ * @param config Optional models configuration
+ * @returns New AgentConfig with the specified tier
+ */
+export function createAgentWithTier(
+  agent: AgentConfig,
+  newTier: ModelTier,
+  config: ModelsConfig = loadModelsConfig()
+): AgentConfig {
+  // Extract provider from agent name (e.g., "claude:heavy" -> "claude")
+  const provider = agent.name.split(":")[0];
+  return createAgentConfig(provider, newTier, config);
+}
+
 // ============================================================================
 // Stage Spec Parsing (for CLI)
 // ============================================================================

@@ -15,6 +15,8 @@ export {
   extractSummaryFromResponse,
   calculateAggregateRankings,
   runChairman,
+  // Two-pass chairman
+  runTwoPassChairman,
   // Checkpoint functions
   saveCheckpoint,
   loadCheckpoint,
@@ -32,6 +34,8 @@ export {
   getConfigPath,
   createAgentConfig,
   createAgentFromSpec,
+  createAgentWithTier,
+  getStepDownTier,
   getPreset,
   listPresets,
   buildPipelineConfig,
@@ -65,6 +69,19 @@ export {
   buildChairmanPrompt,
   parseRankingFromText,
   MAX_HISTORY_ENTRIES,
+  // Two-pass prompt builders
+  buildPass1Prompt,
+  buildPass2Prompt,
+  buildSectionedFormatInstructions,
+  parseSectionedOutput,
+  getMissingSections,
+  getTruncatedSections,
+  // Section constants
+  SECTION_DELIMITERS,
+  PASS1_SECTIONS,
+  PASS2_SECTIONS,
+  PASS1_SECTION_DESCRIPTIONS,
+  PASS2_SECTION_DESCRIPTIONS,
   type ChairmanPromptOptions,
 } from './prompts.js';
 
@@ -81,6 +98,10 @@ export type {
   LabelMap,
   EnhancedPipelineConfig,
   StageAgentConfig,
+  // Two-pass types
+  TwoPassConfig,
+  TwoPassResult,
+  ParsedSection,
   // Checkpoint types
   CheckpointData,
   CheckpointOptions,
