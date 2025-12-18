@@ -348,6 +348,66 @@ function resolvePass2Tier(twoPass: TwoPassConfig, chairmanTier: ModelTier): Mode
 }
 
 /**
+ * Extract fallback sections from Pass 1's section_outlines when Pass 2 fails.
+ * This allows fast presets to still produce usable output even if the lighter
+ * model can't generate full detailed specs.
+ *
+ * @param pass1Sections - Parsed sections from Pass 1
+ * @param silent - Suppress console output
+ * @returns Array of synthetic sections derived from section_outlines
+ */
+function extractFallbackFromOutlines(
+  pass1Sections: ParsedSection[],
+  silent: boolean
+): ParsedSection[] {
+  const outlinesSection = pass1Sections.find(s => s.name === "section_outlines");
+  if (!outlinesSection || !outlinesSection.content) {
+    return [];
+  }
+
+  // Try to parse as JSON first (structured outlines)
+  let outlines: Record<string, string> = {};
+  try {
+    outlines = JSON.parse(outlinesSection.content);
+  } catch {
+    // If not JSON, try to extract key-value pairs from the text
+    // Format: "section_name": "outline content"
+    const lines = outlinesSection.content.split("\n");
+    for (const line of lines) {
+      const match = line.match(/^\s*"?(\w+)"?\s*[:=]\s*"?(.+?)"?\s*,?\s*$/);
+      if (match) {
+        outlines[match[1]] = match[2];
+      }
+    }
+  }
+
+  if (!silent) {
+    console.log(chalk.cyan(`  [Fallback] Extracting ${Object.keys(outlines).length} outlines from Pass 1`));
+  }
+
+  // Create synthetic sections for each Pass 2 section
+  const fallbackSections: ParsedSection[] = [];
+  const fallbackNote = "\n\n---\n*Note: This is a summary outline. Run with balanced or thorough preset for detailed specifications.*";
+
+  for (const sectionName of PASS2_SECTIONS) {
+    const outlineContent = outlines[sectionName];
+    if (outlineContent) {
+      fallbackSections.push({
+        name: sectionName,
+        content: outlineContent + fallbackNote,
+        complete: true,
+      });
+    }
+  }
+
+  if (!silent && fallbackSections.length > 0) {
+    console.log(chalk.cyan(`  [Fallback] Created ${fallbackSections.length} sections from outlines`));
+  }
+
+  return fallbackSections;
+}
+
+/**
  * Run the two-pass chairman synthesis.
  *
  * Pass 1 (Synthesis): Produces executive summary, ambiguities, consensus notes,
@@ -469,8 +529,20 @@ export async function runTwoPassChairman(
     }
   }
 
+  // Fallback: If Pass 2 produced no sections, extract from section_outlines in Pass 1
+  let finalPass2Sections = pass2Sections;
+  let usedFallback = false;
+
+  if (pass2SectionNames.length === 0) {
+    const fallbackSections = extractFallbackFromOutlines(pass1Sections, silent);
+    if (fallbackSections.length > 0) {
+      finalPass2Sections = fallbackSections;
+      usedFallback = true;
+    }
+  }
+
   // Combine outputs
-  const combined = combinePassOutputs(pass1Response, pass2Response, pass1Sections, pass2Sections);
+  const combined = combinePassOutputs(pass1Response, pass2Response, pass1Sections, finalPass2Sections);
 
   return {
     pass1: { agent: pass1Agent.name, response: pass1Response },
@@ -478,8 +550,11 @@ export async function runTwoPassChairman(
     combined,
     parsedSections: {
       pass1: pass1SectionNames,
-      pass2: pass2SectionNames,
+      pass2: usedFallback
+        ? finalPass2Sections.map(s => s.name + " (from outline)")
+        : pass2SectionNames,
     },
+    usedFallback,
   };
 }
 

@@ -104,6 +104,8 @@ export type TwoPassResult = {
     pass1: string[];
     pass2: string[];
   };
+  /** True if Pass 2 failed and section_outlines from Pass 1 were used as fallback */
+  usedFallback?: boolean;
 };
 
 /**
