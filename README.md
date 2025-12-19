@@ -652,6 +652,21 @@ if (result) {
 - Short summaries
 - Single-section outputs
 
+#### Automatic Fallback for Fast Preset
+
+When using the `fast` preset, Pass 2 may fail to produce detailed sections (lighter models don't always follow structured output format). The pipeline automatically falls back to extracting section outlines from Pass 1:
+
+```
+[Pass 2] Complete. Parsed 0/6 sections.
+[Fallback] Pass 2 produced 0 sections, attempting to extract from section_outlines
+[Fallback] Parsed JSON with 6 keys: architecture, data_model, api_contracts, user_flows, security, deployment
+[Fallback] Created 6/6 sections from outlines
+```
+
+Fallback sections include a note: *"This is a summary outline. Run with balanced or thorough preset for detailed specifications."*
+
+This ensures the `fast` preset always produces usable output, even if abbreviated.
+
 #### Disabling Two-Pass
 
 For simple use cases, disable two-pass to use single-pass chairman:
