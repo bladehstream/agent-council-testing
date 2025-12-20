@@ -31,6 +31,7 @@ import type {
   ParsedSection,
   PipelineMode,
   Stage1Result,
+  Stage2CustomResult,
   Stage2Result,
   Stage3Result,
   TwoPassConfig,
@@ -43,13 +44,15 @@ export type PipelineResult = {
   /** Pipeline mode that was used */
   mode: PipelineMode;
   stage1: Stage1Result[];
-  /** Stage 2 results (null in merge mode) */
+  /** Stage 2 results (null in merge mode without custom handler) */
   stage2: Stage2Result[] | null;
   stage3: Stage3Result;
   /** Aggregate rankings (null in merge mode) */
   aggregate: AggregateRanking[] | null;
   /** Two-pass result details (if two-pass was used) */
   twoPassResult?: TwoPassResult;
+  /** Custom Stage 2 result (when customHandler was used) */
+  customStage2?: Stage2CustomResult;
 };
 
 export interface PipelineCallbacks {
@@ -1034,10 +1037,32 @@ export async function runEnhancedPipeline(
   // ==========================================================================
   if (mode === 'merge') {
     // ========================================================================
-    // MERGE MODE: Skip stage2, pass all responses to chairman
+    // MERGE MODE: Optional custom Stage 2, then pass to chairman
     // ========================================================================
-    if (!silent) {
-      console.log(chalk.cyan(`\nMerge mode: Skipping Stage 2, merging ${stage1!.length} responses`));
+
+    let customStage2Result: Stage2CustomResult | undefined;
+
+    // Run custom Stage 2 handler if provided
+    if (config.stage2?.customHandler) {
+      if (!silent) {
+        console.log(chalk.cyan(`\nMerge mode: Running custom Stage 2 handler...`));
+      }
+
+      customStage2Result = await config.stage2.customHandler(
+        stage1!,
+        config.stage2.agents || [],
+        timeoutMs
+      );
+
+      if (!silent) {
+        const sectionCount = Object.keys(customStage2Result.sections).length;
+        const conflictCount = customStage2Result.conflicts?.length ?? 0;
+        console.log(chalk.cyan(`  Custom Stage 2 complete: ${sectionCount} sections, ${conflictCount} conflicts`));
+      }
+    } else {
+      if (!silent) {
+        console.log(chalk.cyan(`\nMerge mode: Skipping Stage 2, merging ${stage1!.length} responses`));
+      }
     }
 
     if (config.stage3.twoPass?.enabled) {
@@ -1113,6 +1138,7 @@ export async function runEnhancedPipeline(
       stage3,
       aggregate: null,
       twoPassResult,
+      customStage2: customStage2Result,
     };
 
   } else {

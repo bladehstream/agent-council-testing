@@ -36,6 +36,37 @@ export type Stage1Result = {
 export type Stage2Result = { agent: string; rankingRaw: string; parsedRanking: string[] };
 export type Stage3Result = { agent: string; response: string };
 
+/**
+ * Result from custom Stage 2 processing (e.g., sectioned deduplication).
+ */
+export type Stage2CustomResult = {
+  /** Consolidated content per section */
+  sections: Record<string, string>;
+  /** Conflicts flagged between agents */
+  conflicts?: Array<{
+    topic: string;
+    positions: Array<{ agent: string; position: string }>;
+    resolution?: string;
+  }>;
+  /** Unique insights to preserve */
+  uniqueInsights?: Array<{
+    source: string;
+    insight: string;
+  }>;
+  /** Raw outputs from custom Stage 2 agents (for debugging/logging) */
+  rawOutputs?: Array<{ agent: string; response: string }>;
+};
+
+/**
+ * Handler function for custom Stage 2 processing.
+ * Takes Stage 1 results and returns consolidated output.
+ */
+export type Stage2CustomHandler = (
+  stage1Results: Stage1Result[],
+  agents: AgentConfig[],
+  timeoutMs?: number
+) => Promise<Stage2CustomResult>;
+
 export type LabelMap = Record<string, string>;
 
 export type ConversationEntry = {
@@ -141,10 +172,22 @@ export type EnhancedPipelineConfig = {
   };
 
   /**
-   * Stage 2 configuration (evaluators/rankers).
-   * Required for 'compete' mode, ignored in 'merge' mode.
+   * Stage 2 configuration.
+   * - 'compete' mode: Required for ranking responses
+   * - 'merge' mode: Ignored (Stage 2 skipped)
+   * - 'custom' handler: Processes Stage 1 results with custom logic
    */
-  stage2?: StageAgentConfig;
+  stage2?: StageAgentConfig & {
+    /**
+     * Custom Stage 2 handler for specialized processing (e.g., sectioned deduplication).
+     * When provided, this handler is called instead of the default ranking logic.
+     * The handler receives Stage 1 results and returns consolidated output.
+     *
+     * Note: When using a custom handler in merge mode, set mode: 'merge' and
+     * provide the handler. Stage 2 will run the custom handler instead of skipping.
+     */
+    customHandler?: Stage2CustomHandler;
+  };
 
   stage3: {
     chairman: AgentConfig;

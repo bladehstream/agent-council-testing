@@ -119,4 +119,7 @@ export type {
   CheckpointData,
   CheckpointOptions,
   CheckpointStage,
+  // Custom Stage 2 types
+  Stage2CustomResult,
+  Stage2CustomHandler,
 } from './types.js';
