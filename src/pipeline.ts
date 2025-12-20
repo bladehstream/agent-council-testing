@@ -1065,11 +1065,48 @@ export async function runEnhancedPipeline(
       }
     }
 
+    // Determine what to pass to chairman: consolidated dedup result or raw Stage 1
+    let chairmanInput: Stage1Result[];
+    if (customStage2Result && Object.keys(customStage2Result.sections).length > 0) {
+      // Convert dedup result to synthetic Stage1Result for chairman
+      // This gives the chairman pre-consolidated content instead of raw responses
+      const consolidatedContent = Object.entries(customStage2Result.sections)
+        .map(([section, content]) => `## ${section}\n\n${content}`)
+        .join('\n\n---\n\n');
+
+      // Add conflicts and unique insights if present
+      let additionalContext = '';
+      if (customStage2Result.conflicts?.length) {
+        additionalContext += '\n\n## CONFLICTS REQUIRING RESOLUTION\n\n';
+        additionalContext += customStage2Result.conflicts.map(c =>
+          `### ${c.topic}\n${c.positions.map(p => `- **${p.agent}**: ${p.position}`).join('\n')}`
+        ).join('\n\n');
+      }
+      if (customStage2Result.uniqueInsights?.length) {
+        additionalContext += '\n\n## UNIQUE INSIGHTS TO PRESERVE\n\n';
+        additionalContext += customStage2Result.uniqueInsights.map(u =>
+          `- **${u.source}**: ${u.insight}`
+        ).join('\n');
+      }
+
+      chairmanInput = [{
+        agent: 'consolidated-dedup',
+        response: consolidatedContent + additionalContext,
+      }];
+
+      if (!silent) {
+        console.log(chalk.cyan(`  Using consolidated dedup output (${chairmanInput[0].response.length} chars) for chairman`));
+      }
+    } else {
+      // Use raw Stage 1 responses
+      chairmanInput = stage1!;
+    }
+
     if (config.stage3.twoPass?.enabled) {
       // Two-pass merge chairman
       twoPassResult = await runTwoPassMergeChairman(
         question,
-        stage1!,
+        chairmanInput,
         config.stage3.chairman,
         config.stage3.twoPass,
         timeoutMs,
@@ -1089,7 +1126,7 @@ export async function runEnhancedPipeline(
         }
         twoPassResult = await runTwoPassMergeChairman(
           question,
-          stage1!,
+          chairmanInput,
           config.stage3.fallback,
           config.stage3.twoPass,
           timeoutMs,
@@ -1105,7 +1142,7 @@ export async function runEnhancedPipeline(
       // Single-pass merge chairman
       stage3 = await runMergeChairman(
         question,
-        stage1!,
+        chairmanInput,
         config.stage3.chairman,
         timeoutMs,
         silent,
@@ -1119,7 +1156,7 @@ export async function runEnhancedPipeline(
         }
         stage3 = await runMergeChairman(
           question,
-          stage1!,
+          chairmanInput,
           config.stage3.fallback,
           timeoutMs,
           silent,
