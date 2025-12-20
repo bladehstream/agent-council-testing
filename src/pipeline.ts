@@ -795,6 +795,19 @@ export async function runTwoPassMergeChairman(
     ? pass1Result.stdout.join("").trim()
     : `Error from chairman pass 1 (${pass1Result.status})`;
 
+  // Check for Pass 1 failure FIRST (before logging success)
+  if (pass1Response.startsWith("Error from chairman") || pass1Response.startsWith("Error:")) {
+    if (!silent) {
+      console.log(chalk.red(`  [Pass 1] FAILED: ${pass1Response.substring(0, 100)}...`));
+      console.log(chalk.red(`  Aborting two-pass synthesis - Pass 1 did not produce valid content.`));
+    }
+    return {
+      pass1: { agent: pass1Agent.name, response: pass1Response },
+      pass2: { agent: pass2Agent.name, response: "" },
+      parsedSections: { pass1: [], pass2: [] },
+    };
+  }
+
   // Parse Pass 1 sections
   const pass1Sections = parseSectionedOutput(pass1Response);
   const pass1SectionNames = pass1Sections.filter(s => s.complete).map(s => s.name);
@@ -805,15 +818,6 @@ export async function runTwoPassMergeChairman(
       const missing = MERGE_PASS1_SECTIONS.filter(s => !pass1SectionNames.includes(s));
       console.log(chalk.yellow(`  [Pass 1] Missing sections: ${missing.join(", ")}`));
     }
-  }
-
-  // Check for Pass 1 failure
-  if (pass1Response.startsWith("Error from chairman")) {
-    return {
-      pass1: { agent: pass1Agent.name, response: pass1Response },
-      pass2: { agent: pass2Agent.name, response: "" },
-      parsedSections: { pass1: [], pass2: [] },
-    };
   }
 
   // === PASS 2: Refine & Finalize ===
