@@ -294,14 +294,20 @@ Provide your synthesis:
 
 /**
  * Format all Stage 1 responses for merge chairman input.
- * Uses clear delimiters for each response.
+ * Uses clear delimiters for each response with explicit model attribution.
  *
  * @param responses - All Stage 1 responses
  * @returns Formatted string with all responses
  */
 export function formatAllResponsesForMerge(responses: Stage1Result[]): string {
   return responses.map((r, i) => {
-    return `===RESPONSE ${i + 1} (${r.agent})===\n${r.response}\n===END RESPONSE ${i + 1}===`;
+    return `===RESPONSE FROM: ${r.agent}===
+MODEL: ${r.agent}
+RESPONSE_INDEX: ${i + 1}
+
+${r.response}
+
+===END RESPONSE FROM: ${r.agent}===`;
   }).join('\n\n');
 }
 
@@ -325,17 +331,27 @@ Your task is to MERGE them into a single comprehensive output.
 
 IMPORTANT: Do NOT pick a winner - synthesize ALL valuable content from every response.
 
+## Source Attribution
+
+Each response below is tagged with its source model using this format:
+===RESPONSE FROM: model_name===
+MODEL: model_name
+RESPONSE_INDEX: N
+
+When you include content in your merged output, you MUST track which model(s) contributed it.
+Use the MODEL field from each response to identify the source.
+
 ## Merge Guidelines
 
 1. **Include unique content**: If something appears in only one response, include it (it represents that model's unique insight)
 
-2. **Deduplicate similar content**: If multiple responses cover the same point, keep the most specific/detailed version
+2. **Deduplicate similar content**: If multiple responses cover the same point, keep the most specific/detailed version and note which models had similar content
 
 3. **Flag conflicts**: If responses contradict each other, include both perspectives with a note about the disagreement
 
 4. **Preserve structure**: Maintain logical organization in the merged output
 
-5. **Attribute when relevant**: If a specific insight came from one model, you may note this
+5. **Track attribution**: For each item in your output, remember which model(s) contributed to it
 
 ## Original Query
 
@@ -392,7 +408,14 @@ export function buildMergePass1Prompt(
   const formattedResponses = responses.map((r, i) => {
     const content = opts.useSummaries && r.summary ? r.summary : r.response;
     const label = opts.useSummaries && r.summary ? '(Summary)' : '(Full)';
-    return `===RESPONSE ${i + 1} (${r.agent}) ${label}===\n${content}\n===END RESPONSE ${i + 1}===`;
+    return `===RESPONSE FROM: ${r.agent}===
+MODEL: ${r.agent}
+RESPONSE_INDEX: ${i + 1}
+CONTENT_TYPE: ${label}
+
+${content}
+
+===END RESPONSE FROM: ${r.agent}===`;
   }).join('\n\n');
 
   const formatInstructions = buildSectionedFormatInstructions(

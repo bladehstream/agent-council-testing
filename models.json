@@ -139,7 +139,7 @@
         "twoPass": {
           "enabled": true,
           "pass1Tier": "default",
-          "pass2Tier": "default"
+          "pass2Tier": "fast"
         }
       }
     },
@@ -148,11 +148,11 @@
       "mode": "merge",
       "stage1": { "tier": "default", "count": 3 },
       "stage3": {
-        "tier": "heavy",
+        "tier": "default",
         "count": 1,
         "twoPass": {
           "enabled": true,
-          "pass1Tier": "heavy",
+          "pass1Tier": "default",
           "pass2Tier": "default"
         }
       }
@@ -162,13 +162,12 @@
       "mode": "merge",
       "stage1": { "tier": "heavy", "count": 3 },
       "stage3": {
-        "tier": "heavy",
+        "tier": "default",
         "count": 1,
-        "reasoning": true,
         "twoPass": {
           "enabled": true,
-          "pass1Tier": "heavy",
-          "pass2Tier": "heavy"
+          "pass1Tier": "default",
+          "pass2Tier": "default"
         }
       }
     }

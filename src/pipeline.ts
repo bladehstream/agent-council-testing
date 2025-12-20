@@ -160,7 +160,7 @@ export async function runCouncilPipeline(
     timeoutMs,
     { tty }
   );
-  const stage1 = extractStage1(stage1States);
+  const stage1 = extractStage1(stage1States, silent);
 
   if (stage1.length === 0) {
     if (!silent) {
@@ -188,7 +188,7 @@ export async function runCouncilPipeline(
     timeoutMs,
     { tty }
   );
-  const stage2 = extractStage2(stage2States);
+  const stage2 = extractStage2(stage2States, silent);
 
   // Calculate aggregate rankings
   const aggregate = calculateAggregateRankings(stage2, labelToAgent);
@@ -252,7 +252,31 @@ export function extractSummaryFromResponse(response: string): string | undefined
   return undefined;
 }
 
-export function extractStage1(results: AgentState[]): Stage1Result[] {
+export function extractStage1(results: AgentState[], silent = false): Stage1Result[] {
+  // Log failed agents
+  const failed = results.filter((r) => r.status !== "completed");
+  if (failed.length > 0 && !silent) {
+    console.log(chalk.yellow(`\n⚠ ${failed.length} Stage 1 agent(s) failed:`));
+    for (const agent of failed) {
+      const duration = agent.endTime && agent.startTime
+        ? `${((agent.endTime - agent.startTime) / 1000).toFixed(1)}s`
+        : 'unknown';
+      console.log(chalk.yellow(`  • ${agent.config.name}: ${agent.status} (${duration})`));
+      if (agent.errorMessage) {
+        console.log(chalk.gray(`    Error: ${agent.errorMessage}`));
+      }
+      if (agent.stderr.length > 0) {
+        const stderrPreview = agent.stderr.join("").trim().slice(0, 200);
+        if (stderrPreview) {
+          console.log(chalk.gray(`    Stderr: ${stderrPreview}${stderrPreview.length >= 200 ? '...' : ''}`));
+        }
+      }
+      if (agent.exitCode !== undefined && agent.exitCode !== 0) {
+        console.log(chalk.gray(`    Exit code: ${agent.exitCode}`));
+      }
+    }
+  }
+
   return results
     .filter((r) => r.status === "completed")
     .map((r) => {
@@ -265,7 +289,28 @@ export function extractStage1(results: AgentState[]): Stage1Result[] {
     });
 }
 
-export function extractStage2(results: AgentState[]): Stage2Result[] {
+export function extractStage2(results: AgentState[], silent = false): Stage2Result[] {
+  // Log failed agents
+  const failed = results.filter((r) => r.status !== "completed");
+  if (failed.length > 0 && !silent) {
+    console.log(chalk.yellow(`\n⚠ ${failed.length} Stage 2 evaluator(s) failed:`));
+    for (const agent of failed) {
+      const duration = agent.endTime && agent.startTime
+        ? `${((agent.endTime - agent.startTime) / 1000).toFixed(1)}s`
+        : 'unknown';
+      console.log(chalk.yellow(`  • ${agent.config.name}: ${agent.status} (${duration})`));
+      if (agent.errorMessage) {
+        console.log(chalk.gray(`    Error: ${agent.errorMessage}`));
+      }
+      if (agent.stderr.length > 0) {
+        const stderrPreview = agent.stderr.join("").trim().slice(0, 200);
+        if (stderrPreview) {
+          console.log(chalk.gray(`    Stderr: ${stderrPreview}${stderrPreview.length >= 200 ? '...' : ''}`));
+        }
+      }
+    }
+  }
+
   return results
     .filter((r) => r.status === "completed")
     .map((r) => {
@@ -939,7 +984,7 @@ export async function runEnhancedPipeline(
       timeoutMs,
       { tty }
     );
-    stage1 = extractStage1(stage1States);
+    stage1 = extractStage1(stage1States, silent);
 
     if (stage1.length === 0) {
       if (!silent) {
@@ -1085,7 +1130,7 @@ export async function runEnhancedPipeline(
         timeoutMs,
         { tty }
       );
-      stage2 = extractStage2(stage2States);
+      stage2 = extractStage2(stage2States, silent);
 
       // Calculate aggregate rankings
       aggregate = calculateAggregateRankings(stage2, labelToAgent);
