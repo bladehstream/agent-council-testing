@@ -942,8 +942,8 @@ export async function runEnhancedPipeline(
   let labelToAgent: LabelMap = {};
   let aggregate: AggregateRanking[] | null = null;
 
-  // Check for existing checkpoint (only relevant for compete mode)
-  const existingCheckpoint = checkpoint && mode === 'compete'
+  // Check for existing checkpoint (works for both compete and merge modes)
+  const existingCheckpoint = checkpoint
     ? loadCheckpoint(question, checkpoint)
     : null;
 
@@ -1002,20 +1002,20 @@ export async function runEnhancedPipeline(
       labels.forEach((label, idx) => {
         labelToAgent[label] = stage1[idx].agent;
       });
+    }
 
-      // Save checkpoint after Stage 1 (compete mode only)
-      if (checkpoint) {
-        saveCheckpoint({
-          version: 1,
-          timestamp: new Date().toISOString(),
-          question,
-          completedStage: "stage1",
-          stage1,
-          labelToAgent,
-        }, checkpoint);
-        if (!silent) {
-          console.log(chalk.gray("Checkpoint saved after Stage 1"));
-        }
+    // Save checkpoint after Stage 1 (both modes)
+    if (checkpoint) {
+      saveCheckpoint({
+        version: 1,
+        timestamp: new Date().toISOString(),
+        question,
+        completedStage: "stage1",
+        stage1,
+        labelToAgent,
+      }, checkpoint);
+      if (!silent) {
+        console.log(chalk.gray("Checkpoint saved after Stage 1"));
       }
     }
   }
