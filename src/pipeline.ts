@@ -1054,7 +1054,7 @@ export async function runEnhancedPipeline(
 
       stage3 = {
         agent: `${twoPassResult.pass1.agent} + ${twoPassResult.pass2.agent}`,
-        response: twoPassResult.combined || twoPassResult.pass2.response,
+        response: twoPassResult.combined || twoPassResult.pass2.response || twoPassResult.pass1.response,
       };
 
       // Try fallback if primary failed
@@ -1073,7 +1073,7 @@ export async function runEnhancedPipeline(
         );
         stage3 = {
           agent: `${twoPassResult.pass1.agent} + ${twoPassResult.pass2.agent}`,
-          response: twoPassResult.combined || twoPassResult.pass2.response,
+          response: twoPassResult.combined || twoPassResult.pass2.response || twoPassResult.pass1.response,
         };
       }
     } else {
