@@ -137,7 +137,7 @@ export function getConfigPath(): string {
 const BASE_AGENT_COMMANDS: Record<string, { command: string[]; promptViaStdin: boolean }> = {
   codex: {
     command: ["codex", "exec", "--skip-git-repo-check"],
-    promptViaStdin: false, // Codex uses positional args for prompt
+    promptViaStdin: true, // Use stdin for large prompts (chairman can be 100KB+)
   },
   claude: {
     command: ["claude", "--print", "--output-format", "text", "--tools", "WebSearch", "--allowedTools", "WebSearch"],

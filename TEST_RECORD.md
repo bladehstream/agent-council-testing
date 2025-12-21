@@ -259,8 +259,10 @@ The 3 failed tests were due to **test harness timeouts** (120s limit), not API f
 | Provider | Base Command | Prompt Method |
 |----------|--------------|---------------|
 | Claude | `claude --print --output-format text --tools WebSearch --allowedTools WebSearch` | stdin |
-| Gemini | `gemini --output-format text` | positional arg |
-| Codex | `codex exec --skip-git-repo-check` | positional arg |
+| Gemini | `gemini --output-format text` | stdin |
+| Codex | `codex exec --skip-git-repo-check` | stdin |
+
+**All providers use stdin** to support large prompts (chairman prompts can be 100KB+). Shell argument limits (~128KB) would cause failures with positional args.
 
 Note: Claude requires both `--tools WebSearch` and `--allowedTools WebSearch` for web search to work.
 

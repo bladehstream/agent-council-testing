@@ -850,6 +850,27 @@ const twoPassResult = await runTwoPassMergeChairman(
 );
 ```
 
+### Prompt Delivery via Stdin
+
+All built-in agents (Claude, Gemini, Codex) use **stdin** to deliver prompts to the underlying CLI tools. This is critical for large prompts:
+
+```typescript
+// Internal configuration - all providers use stdin
+const BASE_AGENT_COMMANDS = {
+  claude: { command: ["claude", "--print", ...], promptViaStdin: true },
+  gemini: { command: ["gemini", "--output-format", "text"], promptViaStdin: true },
+  codex:  { command: ["codex", "exec", ...], promptViaStdin: true },
+};
+```
+
+**Why stdin matters:**
+- **Chairman prompts can be 100KB+** (all Stage 1 responses + formatting)
+- **Shell argument limits** (~128KB-2MB) would cause failures with positional args
+- **Special characters** in prompts can break shell parsing
+- **All three CLIs** (claude, gemini, codex) support stdin input
+
+If you're adding custom agents, **always use `promptViaStdin: true`** unless the CLI specifically requires positional arguments and you're certain prompts will be small.
+
 ### Custom Agents
 
 ```typescript
@@ -857,7 +878,7 @@ const customAgents: AgentConfig[] = [
   {
     name: "ollama-llama",
     command: ["ollama", "run", "llama2"],
-    promptViaStdin: true,
+    promptViaStdin: true,  // Always prefer stdin for large prompt support
   },
   {
     name: "ollama-mistral",
