@@ -1,0 +1,54 @@
+{
+  "$schema": "https://agent-council.dev/schemas/router-config.json",
+  "version": "1.0.0",
+  "models": {
+    "gpt-5.1": {
+      "provider": "openai",
+      "aliases": ["gpt"],
+      "model": "gpt-5.1",
+      "description": "OpenAI GPT-5.1 — strong general reasoning"
+    },
+    "gpt-5.1-mini": {
+      "provider": "openai",
+      "aliases": ["gpt-fast"],
+      "model": "gpt-5.1-mini",
+      "description": "OpenAI GPT-5.1 Mini — faster, cheaper"
+    },
+    "gemini-3-pro": {
+      "provider": "google",
+      "aliases": ["gemini"],
+      "model": "gemini-3-pro-preview",
+      "description": "Google Gemini 3 Pro — long-context reasoning"
+    },
+    "gemini-3-flash": {
+      "provider": "google",
+      "aliases": ["gemini-fast"],
+      "model": "gemini-3-flash-preview",
+      "description": "Google Gemini 3 Flash — balanced speed"
+    },
+    "claude-opus-4-7": {
+      "provider": "anthropic",
+      "aliases": ["claude"],
+      "model": "claude-opus-4-7",
+      "description": "Anthropic Claude Opus 4.7 — strongest Claude"
+    },
+    "claude-sonnet-4-6": {
+      "provider": "anthropic",
+      "aliases": ["claude-fast"],
+      "model": "claude-sonnet-4-6",
+      "description": "Anthropic Claude Sonnet 4.6 — balanced"
+    },
+    "kimi-k2": {
+      "provider": "moonshot",
+      "aliases": ["kimi"],
+      "model": "kimi-k2-0905-preview",
+      "description": "Moonshot Kimi K2 — strong reasoning, long context"
+    },
+    "kimi-k2-turbo": {
+      "provider": "moonshot",
+      "aliases": ["kimi-fast"],
+      "model": "kimi-k2-turbo-preview",
+      "description": "Moonshot Kimi K2 Turbo — faster"
+    }
+  }
+}

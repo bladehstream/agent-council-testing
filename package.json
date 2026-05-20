@@ -6,7 +6,8 @@
   "main": "./dist/lib.js",
   "types": "./dist/lib.d.ts",
   "bin": {
-    "agent-council": "./dist/index.js"
+    "agent-council": "./dist/index.js",
+    "llm-router-mcp": "./dist/mcp/server.js"
   },
   "exports": {
     ".": {
@@ -21,7 +22,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "router-config.json"
   ],
   "keywords": [
     "ai",
@@ -31,8 +33,11 @@
     "claude",
     "codex",
     "gemini",
+    "kimi",
+    "moonshot",
     "llm",
-    "cli"
+    "cli",
+    "mcp"
   ],
   "author": "Lukin <mylukin@gmail.com>",
   "license": "MIT",
@@ -42,7 +47,7 @@
   },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsc && chmod +x dist/index.js",
+    "build": "tsc && chmod +x dist/index.js dist/mcp/server.js",
     "prepare": "npm run build",
     "start": "node dist/index.js",
     "test": "node tests/test-runner.mjs && node tests/test-model-config.mjs",
@@ -54,8 +59,13 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.97.1",
+    "@google/genai": "^2.4.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "chalk": "^5.3.0",
-    "yargs": "^17.7.2"
+    "openai": "^6.38.0",
+    "yargs": "^17.7.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.19.1",
